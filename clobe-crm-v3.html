@@ -1,0 +1,2163 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clobe CRM</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --teal: #08B1A9;
+    --teal-light: #E1F5EE;
+    --teal-mid: #5DCAA5;
+    --teal-dark: #0F6E56;
+    --bg: #F7F7F5;
+    --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.1);
+    --border-md: rgba(0,0,0,0.15);
+    --text: #1A1A18;
+    --text-2: #5F5E5A;
+    --text-3: #9A9994;
+    --ai-bg: #E1F5EE; --ai-text: #0F6E56; --ai-border: #5DCAA5;
+    --fin-bg: #E6F1FB; --fin-text: #185FA5; --fin-border: #85B7EB;
+    --con-bg: #EEEDFE; --con-text: #534AB7; --con-border: #AFA9EC;
+    --green: #1D9E75; --red: #E24B4A; --amber: #BA7517; --amber-bg: #FAEEDA; --amber-border: #EF9F27;
+    --radius: 8px; --radius-lg: 12px;
+    --font: 'Pretendard', -apple-system, 'Malgun Gothic', sans-serif;
+    --mono: 'JetBrains Mono', 'Consolas', monospace;
+  }
+
+  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; min-height: 100vh; }
+
+  /* LAYOUT */
+  .shell { display: grid; grid-template-rows: 48px 1fr; height: 100vh; }
+  .topbar { background: var(--surface); border-bottom: 0.5px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 0; position: sticky; top: 0; z-index: 100; }
+  .logo-wrap { display: flex; align-items: center; gap: 8px; margin-right: 28px; }
+  .logo-icon { width: 24px; height: 24px; }
+  .logo-text { font-size: 14px; font-weight: 600; color: var(--teal); letter-spacing: -0.3px; }
+  .nav { display: flex; height: 100%; gap: 0; }
+  .nav-item { font-size: 13px; padding: 0 16px; display: flex; align-items: center; color: var(--text-2); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; gap: 5px; transition: color 0.15s; }
+  .nav-item:hover { color: var(--text); }
+  .nav-item.active { color: var(--text); border-bottom-color: var(--teal); font-weight: 500; }
+  .badge-red { background: var(--red); color: #fff; font-size: 10px; font-weight: 600; border-radius: 10px; padding: 1px 6px; }
+
+  .content { overflow-y: auto; }
+  .page { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* COMMON */
+  .section-title { font-size: 11px; font-weight: 500; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+  .card-sm { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+
+  /* METRICS */
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .metric { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+  .metric-label { font-size: 12px; color: var(--text-3); margin-bottom: 6px; }
+  .metric-val { font-size: 26px; font-weight: 600; color: var(--text); letter-spacing: -0.5px; }
+  .metric-sub { font-size: 12px; margin-top: 4px; }
+  .up { color: var(--green); } .down { color: var(--red); } .warn-text { color: var(--amber); }
+
+  /* SKU FILTER */
+  .sku-filter { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .sku-chip { font-size: 12px; padding: 5px 12px; border-radius: 20px; border: 0.5px solid var(--border-md); cursor: pointer; background: var(--surface); color: var(--text-2); display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+  .sku-chip img { width: 14px; height: 14px; object-fit: contain; }
+  .sku-chip.on-ai { background: var(--ai-bg); color: var(--ai-text); border-color: var(--ai-border); font-weight: 500; }
+  .sku-chip.on-fin { background: var(--fin-bg); color: var(--fin-text); border-color: var(--fin-border); font-weight: 500; }
+  .sku-chip.on-con { background: var(--con-bg); color: var(--con-text); border-color: var(--con-border); font-weight: 500; }
+
+  /* TABLES */
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th { font-size: 11px; color: var(--text-3); font-weight: 400; text-align: left; padding: 0 0 10px; border-bottom: 0.5px solid var(--border); }
+  .tbl th:not(:first-child) { text-align: right; }
+  .tbl td { padding: 11px 0; border-bottom: 0.5px solid var(--border); color: var(--text); vertical-align: middle; }
+  .tbl td:not(:first-child) { text-align: right; }
+  .tbl tr:last-child td { border-bottom: none; }
+
+  /* TAGS */
+  .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
+  .tag img { width: 12px; height: 12px; object-fit: contain; }
+  .tag-ai { background: var(--ai-bg); color: var(--ai-text); }
+  .tag-fin { background: var(--fin-bg); color: var(--fin-text); }
+  .tag-con { background: var(--con-bg); color: var(--con-text); }
+  .tag-cat { background: var(--bg); color: var(--text-2); border: 0.5px solid var(--border); }
+
+  /* STATUS */
+  .status { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot-live { background: var(--green); }
+  .dot-end { background: var(--text-3); }
+  .dot-draft { background: var(--amber); }
+
+  /* BUTTONS */
+  .btn { font-size: 13px; padding: 8px 18px; border-radius: var(--radius); border: 0.5px solid var(--border-md); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .btn-primary { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .btn-primary:hover { background: var(--teal-dark); }
+  .btn-ghost { background: transparent; color: var(--text-2); }
+  .btn-ghost:hover { background: var(--bg); }
+  .btn-sm { font-size: 12px; padding: 6px 14px; }
+
+  /* FORM */
+  .field { margin-bottom: 14px; }
+  .fl { font-size: 12px; color: var(--text-2); margin-bottom: 5px; }
+  .fl small { font-size: 11px; color: var(--text-3); margin-left: 4px; }
+  .fi { width: 100%; font-size: 13px; padding: 8px 11px; border: 0.5px solid var(--border-md); border-radius: var(--radius); background: var(--surface); color: var(--text); font-family: var(--font); transition: border-color 0.15s; }
+  .fi:focus { outline: none; border-color: var(--teal); }
+  .fi-readonly { background: var(--bg); color: var(--text-2); cursor: default; }
+  .slug-box { font-size: 11px; color: var(--teal-dark); background: var(--ai-bg); padding: 5px 9px; border-radius: var(--radius); margin-top: 5px; font-family: var(--mono); }
+  .utm-auto-box { font-size: 11px; color: var(--fin-text); background: var(--fin-bg); padding: 5px 9px; border-radius: var(--radius); margin-top: 5px; font-family: var(--mono); }
+
+  /* PAGE 1: DASHBOARD */
+  .chart-area { height: 180px; position: relative; }
+  .two-col-dash { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+
+  /* PAGE 2: SEND */
+  .send-grid { display: grid; grid-template-columns: 220px 1fr 300px; gap: 16px; }
+  .tpl-list { display: flex; flex-direction: column; gap: 6px; }
+  .tpl-item { padding: 10px 12px; border: 0.5px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all 0.15s; }
+  .tpl-item:hover { border-color: var(--border-md); background: var(--bg); }
+  .tpl-item.selected { border-color: var(--teal); background: var(--teal-light); }
+  .tpl-item-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .tpl-item-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  /* SKU SELECT row */
+  .sku-select-row { display: flex; gap: 6px; }
+  .sku-sel { font-size: 12px; padding: 6px 12px; border-radius: 20px; border: 0.5px solid var(--border-md); cursor: pointer; background: var(--surface); color: var(--text-2); font-family: var(--font); display: flex; align-items: center; gap: 5px; transition: all 0.15s; }
+  .sku-sel img { width: 14px; height: 14px; object-fit: contain; }
+  .sku-sel.sel-ai { background: var(--ai-bg); color: var(--ai-text); border-color: var(--ai-border); font-weight: 500; }
+  .sku-sel.sel-fin { background: var(--fin-bg); color: var(--fin-text); border-color: var(--fin-border); font-weight: 500; }
+  .sku-sel.sel-con { background: var(--con-bg); color: var(--con-text); border-color: var(--con-border); font-weight: 500; }
+
+  /* PREVIEW EMAIL */
+  .email-preview { border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .ep-header { background: var(--teal); padding: 16px 18px 12px; color: #fff; }
+  .ep-logo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .ep-logo-img { width: 20px; height: 20px; object-fit: contain; filter: brightness(0) invert(1); }
+  .ep-logo-text { font-size: 12px; font-weight: 500; opacity: 0.9; }
+  .ep-title { font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .ep-body { padding: 14px 18px; font-size: 12px; color: var(--text-2); line-height: 1.7; }
+  .ep-cta { display: inline-block; background: var(--teal); color: #fff; font-size: 12px; padding: 7px 16px; border-radius: var(--radius); margin: 4px 4px 4px 0; text-decoration: none; }
+  .ep-consent { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 10px 12px; margin-top: 10px; font-size: 11px; color: var(--text-2); }
+  .ep-consent-title { font-weight: 500; color: var(--text); margin-bottom: 3px; font-size: 12px; }
+  .ep-footer { padding: 10px 18px; border-top: 0.5px solid var(--border); font-size: 10px; color: var(--text-3); }
+
+  /* PAGE 3: AUTOMATION */
+  .auto-table { width: 100%; }
+  .auto-row { display: grid; grid-template-columns: 1fr 100px 100px 90px 60px; gap: 12px; align-items: center; padding: 13px 0; border-bottom: 0.5px solid var(--border); }
+  .auto-row:last-child { border-bottom: none; }
+  .auto-row.head { font-size: 11px; color: var(--text-3); padding-bottom: 10px; }
+  .auto-name { font-size: 13px; font-weight: 500; color: var(--text); }
+  .auto-trigger { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .toggle-wrap { display: flex; justify-content: center; }
+  .toggle { width: 34px; height: 20px; border-radius: 10px; border: none; cursor: pointer; position: relative; transition: background 0.2s; }
+  .toggle.on { background: var(--teal); }
+  .toggle.off { background: #D3D1C7; }
+  .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: #fff; top: 2px; transition: left 0.2s; }
+  .toggle.on::after { left: 16px; }
+  .toggle.off::after { left: 2px; }
+
+  /* PAGE 4: HISTORY */
+  .hist-row { display: grid; grid-template-columns: 130px 1fr 90px 70px 70px 70px 80px; gap: 8px; align-items: center; padding: 11px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-row.head { font-size: 11px; color: var(--text-3); padding-bottom: 10px; font-weight: 400; }
+
+  /* PAGE 5: WARNINGS */
+  .warn-card { border: 0.5px solid var(--amber-border); background: var(--amber-bg); border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 10px; }
+  .warn-card-title { font-size: 13px; font-weight: 500; color: #412402; margin-bottom: 5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .warn-card-desc { font-size: 12px; color: #633806; line-height: 1.6; }
+  .warn-pill { font-size: 10px; background: var(--amber-border); color: #412402; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+
+  /* PAGE 6: TEMPLATE MANAGE */
+  .tpl-manage-grid { display: grid; grid-template-columns: 240px 1fr; gap: 16px; }
+  .tpl-manage-list { display: flex; flex-direction: column; gap: 6px; }
+  .tpl-manage-item { padding: 12px 14px; border: 0.5px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all 0.15s; background: var(--surface); }
+  .tpl-manage-item:hover { border-color: var(--border-md); }
+  .tpl-manage-item.selected { border-color: var(--teal); background: var(--teal-light); }
+  .tpl-manage-item-name { font-size: 13px; font-weight: 500; }
+  .tpl-manage-item-meta { font-size: 11px; color: var(--text-3); margin-top: 3px; display: flex; gap: 6px; align-items: center; }
+  .btn-new-tpl { width: 100%; font-size: 13px; padding: 10px; border-radius: var(--radius); border: 0.5px dashed var(--border-md); background: transparent; color: var(--text-2); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .btn-new-tpl:hover { background: var(--bg); color: var(--text); }
+
+  /* CREATE FORM */
+  .create-body { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+  .create-left { overflow-y: auto; }
+  .create-right { position: sticky; top: 0; }
+  .form-section { margin-bottom: 24px; }
+  .form-section-title { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 0.5px solid var(--border); }
+  .cat-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cat-btn { font-size: 12px; padding: 5px 11px; border-radius: 20px; border: 0.5px solid var(--border-md); cursor: pointer; background: var(--surface); color: var(--text-2); font-family: var(--font); transition: all 0.15s; }
+  .cat-btn:hover { background: var(--bg); }
+  .cat-btn.on { background: var(--bg); color: var(--text); border-color: var(--text-3); font-weight: 500; }
+  .cta-block { border: 0.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; background: var(--surface); }
+  .cta-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cta-label { font-size: 12px; font-weight: 500; color: var(--text); }
+  .cta-remove { font-size: 11px; color: var(--text-3); border: none; background: none; cursor: pointer; font-family: var(--font); }
+  .cta-remove:hover { color: var(--red); }
+  .cta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-add-cta { width: 100%; font-size: 12px; padding: 9px; border-radius: var(--radius); border: 0.5px dashed var(--border-md); background: none; color: var(--text-2); cursor: pointer; font-family: var(--font); transition: all 0.15s; }
+  .btn-add-cta:hover { background: var(--bg); }
+
+  /* CONSENT TOGGLE */
+  .consent-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border: 0.5px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .consent-toggle-info { font-size: 13px; color: var(--text); }
+  .consent-toggle-desc { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  /* UTM SUMMARY */
+  .utm-summary { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .utm-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 9px 14px; border-bottom: 0.5px solid var(--border); }
+  .utm-row:last-child { border-bottom: none; }
+  .utm-key { font-size: 11px; font-family: var(--mono); color: var(--text-3); min-width: 100px; flex-shrink: 0; }
+  .utm-val { font-size: 11px; font-family: var(--mono); color: var(--text); text-align: right; word-break: break-all; }
+  .auto-tag { font-size: 10px; background: var(--ai-bg); color: var(--ai-text); padding: 1px 5px; border-radius: 4px; margin-left: 4px; font-family: var(--font); }
+  .fixed-tag { font-size: 10px; background: var(--bg); color: var(--text-3); padding: 1px 5px; border-radius: 4px; margin-left: 4px; font-family: var(--font); }
+
+  /* BOTTOM BAR */
+  .bottom-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-top: 0.5px solid var(--border); background: var(--surface); gap: 8px; }
+  .bottom-bar-left { font-size: 12px; color: var(--text-3); }
+
+  /* MISC */
+  .bar-bg { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; }
+  .row-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .row-bar:last-child { margin-bottom: 0; }
+  .rate-label { font-size: 12px; color: var(--text-2); min-width: 44px; text-align: right; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .page-title { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+  select.fi { appearance: none; background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%235F5E5A' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; }
+
+  .btn-ch { background:var(--surface); color:var(--text-2); transition:all .15s; }
+  .btn-ch.active-ch { background:var(--teal); color:#fff; font-weight:500; }
+
+  .auto-row-new { display:grid; grid-template-columns:1fr 90px 90px 80px 60px; gap:8px; align-items:center; padding:13px 16px; border-bottom:0.5px solid var(--border); font-size:13px; transition:background .1s; }
+  .auto-row-new:last-child { border-bottom:none; }
+  .auto-row-new:hover { background:var(--bg); }
+  .auto-row-new.selected { background:var(--teal-light); }
+  .auto-row-cond { grid-template-columns:1fr 90px 120px 90px 60px; }
+
+  /* TIMETABLE */
+  .tt-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .tt-legend { display:flex; gap:14px; font-size:11px; color:var(--text-2); align-items:center; }
+  .tt-legend-item { display:flex; align-items:center; gap:5px; }
+  .tt-legend-dot { width:10px; height:10px; border-radius:50%; }
+  .tt-legend-empty { width:10px; height:10px; border-radius:50%; border:2px dashed #aaa; }
+  .tt-sku-chips { display:flex; gap:6px; }
+  .tt-chip { font-size:11px; padding:4px 10px; border-radius:20px; border:0.5px solid var(--border-md); cursor:pointer; background:var(--surface); color:var(--text-2); transition:all .15s; }
+  .tt-chip.on-ai { background:var(--ai-bg); color:var(--ai-text); border-color:var(--ai-border); font-weight:500; }
+  .tt-chip.on-fin { background:var(--fin-bg); color:var(--fin-text); border-color:var(--fin-border); font-weight:500; }
+  .tt-chip.on-con { background:var(--con-bg); color:var(--con-text); border-color:var(--con-border); font-weight:500; }
+  .tt-wrap { overflow-x:auto; }
+  .tt { width:100%; border-collapse:collapse; }
+  .tt th { font-size:11px; color:var(--text-3); font-weight:400; text-align:center; padding:0 0 10px; border-bottom:0.5px solid var(--border); }
+  .tt th.tt-time-col { width:54px; text-align:left; }
+  .tt th.tt-today { color:var(--teal); font-weight:600; }
+  .tt td { padding:3px 4px; border-bottom:0.5px solid var(--bg); text-align:center; vertical-align:middle; height:42px; }
+  .tt td.tt-time-label { font-size:11px; color:#ccc; text-align:left; font-family:var(--mono); }
+  .tt td.tt-today-col { background:rgba(8,177,169,0.04); }
+  .tt-marker-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .tt-marker { width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .12s; margin:auto; }
+  .tt-marker:hover { transform:scale(1.18); }
+  .tt-marker.done { border:none; }
+  .tt-marker.plan { background:transparent!important; border-width:2px; border-style:dashed; }
+  .tt-marker.done.sku-ai { background:#1D9E75; }
+  .tt-marker.done.sku-fin { background:#185FA5; }
+  .tt-marker.done.sku-con { background:#534AB7; }
+  .tt-marker.plan.sku-ai { border-color:#1D9E75; }
+  .tt-marker.plan.sku-fin { border-color:#185FA5; }
+  .tt-marker.plan.sku-con { border-color:#534AB7; }
+  .tt-tooltip { position:fixed; background:#1a1a18; color:#fff; font-size:11px; padding:9px 12px; border-radius:var(--radius); pointer-events:none; opacity:0; transition:opacity .15s; z-index:9999; min-width:170px; line-height:1.7; }
+  .tt-tooltip.show { opacity:1; }
+  .tt-tip-sku { font-size:10px; padding:1px 6px; border-radius:10px; font-weight:500; display:inline-block; margin-bottom:2px; }
+  .tt-tip-ai { background:var(--ai-bg); color:var(--ai-text); }
+  .tt-tip-fin { background:var(--fin-bg); color:var(--fin-text); }
+  .tt-tip-con { background:var(--con-bg); color:var(--con-text); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="logo-wrap">
+      <img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" class="logo-icon" alt="">
+      <span class="logo-text">Clobe CRM</span>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" data-page="dash" onclick="goPage('dash',this)">대시보드</div>
+      <div class="nav-item" data-page="send" onclick="goPage('send',this)">발송하기</div>
+      <div class="nav-item" data-page="auto" onclick="goPage('auto',this)">자동화</div>
+      <div class="nav-item" data-page="hist" onclick="goPage('hist',this)">발송이력</div>
+      <div class="nav-item" data-page="warn" onclick="goPage('warn',this)">워닝 <span class="badge-red">3</span></div>
+      <div class="nav-item" data-page="tpl" onclick="goPage('tpl',this)">템플릿 관리</div>
+      <div class="nav-item" data-page="settings" onclick="goPage('settings',this)">설정</div>
+    </nav>
+  </div>
+
+  <div class="content">
+
+    <!-- PAGE 1: DASHBOARD -->
+    <div class="page active" id="page-dash">
+      <div class="page-header">
+        <div class="page-title">대시보드</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <!-- 채널 필터 -->
+          <div style="display:flex;gap:0;border:0.5px solid var(--border-md);border-radius:var(--radius);overflow:hidden">
+            <button id="chAll" onclick="setDashChannel('all')" class="btn-ch active-ch" style="font-size:12px;padding:5px 14px;border:none;cursor:pointer;font-family:var(--font)">전체</button>
+            <button id="chEmail" onclick="setDashChannel('email')" class="btn-ch" style="font-size:12px;padding:5px 14px;border:none;cursor:pointer;font-family:var(--font)">이메일</button>
+            <button id="chAlim" onclick="setDashChannel('alim')" class="btn-ch" style="font-size:12px;padding:5px 14px;border:none;cursor:pointer;font-family:var(--font)">알림톡</button>
+          </div>
+          <div style="width:1px;height:16px;background:var(--border);"></div>
+          <button class="btn btn-ghost btn-sm">7일</button>
+          <button class="btn btn-ghost btn-sm" style="background:var(--bg);font-weight:500;color:var(--text)">30일</button>
+          <button class="btn btn-ghost btn-sm">90일</button>
+        </div>
+      </div>
+
+      <!-- 지표 카드 -->
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">이번 달 총 발송</div>
+          <div class="metric-val" id="metricSends">284,120</div>
+          <div class="metric-sub up" id="metricSendsSub">↑ 12.4% vs 지난달</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label" id="metricOpenLabel">평균 오픈율</div>
+          <div class="metric-val" id="metricOpen">31.2%</div>
+          <div class="metric-sub up" id="metricOpenSub">↑ 2.1%p vs 지난달</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">평균 클릭률</div>
+          <div class="metric-val" id="metricCtr">8.7%</div>
+          <div class="metric-sub down" id="metricCtrSub">↓ 0.4%p vs 지난달</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">추적 미수집</div>
+          <div class="metric-val warn-text">3건</div>
+          <div class="metric-sub warn-text" style="cursor:pointer" onclick="goPage('warn',document.querySelector('[data-page=warn]'))">→ 워닝 확인</div>
+        </div>
+      </div>
+
+      <!-- 채널 안내 배지 -->
+      <div id="dashChannelBadge" style="display:none;margin-bottom:12px">
+        <span id="dashChannelBadgeInner" style="font-size:12px;padding:4px 12px;border-radius:20px;font-weight:500"></span>
+        <span style="font-size:12px;color:var(--text-3);margin-left:8px" id="dashChannelNote"></span>
+      </div>
+
+      <div class="sku-filter">
+        <div class="sku-chip on-ai" onclick="toggleChip(this,'on-ai')"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</div>
+        <div class="sku-chip on-fin" onclick="toggleChip(this,'on-fin')"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</div>
+        <div class="sku-chip on-con" onclick="toggleChip(this,'on-con')"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</div>
+      </div>
+
+      <!-- TIMETABLE -->
+      <div class="card" style="margin-bottom:12px">
+        <div class="tt-card-header">
+          <div class="section-title" style="margin-bottom:0">이번 주 발송 타임테이블</div>
+          <div style="display:flex;align-items:center;gap:16px">
+            <div class="tt-legend">
+              <div class="tt-legend-item"><div class="tt-legend-dot" style="background:#1D9E75"></div>클로브AI</div>
+              <div class="tt-legend-item"><div class="tt-legend-dot" style="background:#185FA5"></div>클로브금융</div>
+              <div class="tt-legend-item"><div class="tt-legend-dot" style="background:#534AB7"></div>클로브커넥트</div>
+              <div class="tt-legend-item"><div class="tt-legend-empty"></div>예정</div>
+            </div>
+            <div class="tt-sku-chips">
+              <span class="tt-chip on-ai" onclick="ttToggle('ai',this)">AI</span>
+              <span class="tt-chip on-fin" onclick="ttToggle('fin',this)">Finance</span>
+              <span class="tt-chip on-con" onclick="ttToggle('con',this)">Connect</span>
+            </div>
+          </div>
+        </div>
+        <div class="tt-wrap">
+          <table class="tt">
+            <thead>
+              <tr>
+                <th class="tt-time-col"></th>
+                <th>월 4/7</th>
+                <th>화 4/8</th>
+                <th class="tt-today">수 4/9 <span style="font-size:9px;background:var(--teal);color:#fff;padding:1px 5px;border-radius:4px;font-weight:500">오늘</span></th>
+                <th>목 4/10</th>
+                <th>금 4/11</th>
+                <th>토 4/12</th>
+                <th>일 4/13</th>
+              </tr>
+            </thead>
+            <tbody id="ttBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 트렌드 차트 -->
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="section-title" style="margin-bottom:0" id="trendChartTitle">일별 발송량 추이</div>
+          <div style="display:flex;gap:16px;font-size:12px;color:var(--text-2)" id="trendLegend">
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#08B1A9;display:inline-block"></span>클로브AI</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#378ADD;display:inline-block"></span>클로브금융</span>
+            <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:2px;background:#7F77DD;display:inline-block"></span>클로브커넥트</span>
+          </div>
+        </div>
+        <div class="chart-area"><canvas id="trendChart"></canvas></div>
+      </div>
+
+      <div class="two-col-dash">
+        <div class="card">
+          <div class="section-title" style="margin-bottom:14px" id="openRateTitle">제품별 오픈율</div>
+          <div id="openRateBars">
+            <div class="row-bar">
+              <div class="tag tag-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</div>
+              <div class="bar-bg"><div class="bar-fill" style="width:78%;background:var(--teal)"></div></div>
+              <div class="rate-label">78%</div>
+            </div>
+            <div class="row-bar">
+              <div class="tag tag-fin"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</div>
+              <div class="bar-bg"><div class="bar-fill" style="width:44%;background:#378ADD"></div></div>
+              <div class="rate-label">44%</div>
+            </div>
+            <div class="row-bar">
+              <div class="tag tag-con"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</div>
+              <div class="bar-bg"><div class="bar-fill" style="width:34%;background:#7F77DD"></div></div>
+              <div class="rate-label">34%</div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-title" style="margin-bottom:14px">캠페인 성과 요약</div>
+          <table class="tbl" id="dashCampaignTable">
+            <thead><tr><th>캠페인</th><th>채널</th><th>제품</th><th>오픈율</th><th>상태</th></tr></thead>
+            <tbody id="dashCampaignBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 2: SEND -->
+    <div class="page" id="page-send">
+      <div class="page-header">
+        <div class="page-title">발송하기</div>
+        <div style="display:flex;gap:0;border:0.5px solid var(--border-md);border-radius:var(--radius);overflow:hidden">
+          <button id="sendChannelEmail" onclick="setSendChannel('email')" style="font-size:13px;padding:6px 18px;border:none;background:var(--teal);color:#fff;cursor:pointer;font-family:var(--font)">이메일</button>
+          <button id="sendChannelAlim" onclick="setSendChannel('alim')" style="font-size:13px;padding:6px 18px;border:none;background:var(--surface);color:var(--text-2);cursor:pointer;font-family:var(--font)">알림톡</button>
+        </div>
+      </div>
+
+      <!-- 이메일 발송 뷰 -->
+      <div id="sendEmailView" class="send-grid">
+        <div>
+          <div class="section-title" style="margin-bottom:10px">템플릿 선택</div>
+          <div class="tpl-list" id="sendTplList">
+            <div class="tpl-item selected" onclick="selectSendTpl(this,'신기능 출시 안내','기능안내','ai')">
+              <div class="tpl-item-name">신기능 출시 안내</div>
+              <div class="tpl-item-meta"><span class="tag tag-ai" style="font-size:10px"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span> 기능안내</div>
+            </div>
+            <div class="tpl-item" onclick="selectSendTpl(this,'세금 신고 리마인더','리마인더','ai')">
+              <div class="tpl-item-name">세금 신고 리마인더</div>
+              <div class="tpl-item-meta"><span class="tag tag-ai" style="font-size:10px"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span> 리마인더</div>
+            </div>
+            <div class="tpl-item" onclick="selectSendTpl(this,'팩토링 만기 안내','리마인더','fin')">
+              <div class="tpl-item-name">팩토링 만기 안내</div>
+              <div class="tpl-item-meta"><span class="tag tag-fin" style="font-size:10px"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</span> 리마인더</div>
+            </div>
+            <div class="tpl-item" onclick="selectSendTpl(this,'세무대리인 리포트','공지','con')">
+              <div class="tpl-item-name">세무대리인 리포트</div>
+              <div class="tpl-item-meta"><span class="tag tag-con" style="font-size:10px"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</span> 공지</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section-title" style="margin-bottom:10px">변수 입력</div>
+          <div class="card-sm">
+            <div class="field">
+              <div class="fl">제품 스큐</div>
+              <div class="sku-select-row" id="sendSkuRow">
+                <div class="sku-sel sel-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</div>
+                <div class="sku-sel"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</div>
+                <div class="sku-sel"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</div>
+              </div>
+            </div>
+            <div class="field"><div class="fl">이메일 제목</div><input class="fi" id="sendSubject" placeholder="예: 클로브 AI, 예상 부가세 조회 기능 출시" oninput="updateSendPreview()"></div>
+            <div class="field"><div class="fl">기능명</div><input class="fi" placeholder="예: 예상 부가세 조회"></div>
+            <div class="field"><div class="fl">기능 설명</div><textarea class="fi" rows="2" placeholder="예: 신고 전 예상 납부세액을 미리 확인할 수 있습니다." style="resize:none"></textarea></div>
+            <div class="field"><div class="fl">발송 대상 <small>수신자 이메일 (쉼표 구분)</small></div><textarea class="fi" rows="2" placeholder="예: user@company.com, team@corp.co.kr" style="resize:none"></textarea></div>
+            <div class="field">
+              <div class="fl">utm_term <small>자동 생성 — 수동 오버라이드 가능</small></div>
+              <input class="fi" id="sendUtmTerm" value="mkt-push-email">
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+              <button class="btn btn-ghost">임시저장</button>
+              <button class="btn btn-primary" onclick="alert('발송 요청이 완료되었습니다.')">발송 요청 →</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section-title" style="margin-bottom:10px">미리보기</div>
+          <div class="email-preview" id="sendPreview">
+            <div class="ep-header" id="sendPreviewHeader">
+              <div class="ep-logo-row">
+                <img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" class="ep-logo-img" id="sendPreviewLogoImg" alt="">
+                <span class="ep-logo-text" id="sendPreviewLogoText">클로브AI</span>
+              </div>
+              <div class="ep-title" id="sendPreviewTitle">제목을 입력하세요</div>
+            </div>
+            <div class="ep-body">
+              <p style="margin-bottom:8px">안녕하세요, 클로브입니다.</p>
+              <a class="ep-cta" href="#">지금 확인하기</a>
+            </div>
+            <div class="ep-footer">본 메일은 발신전용입니다 · 수신거부</div>
+          </div>
+          <div style="margin-top:10px;background:var(--bg);border-radius:var(--radius);padding:10px 12px">
+            <div style="font-size:11px;color:var(--text-3);margin-bottom:6px;font-weight:500">자동 생성 UTM</div>
+            <div style="font-size:10px;font-family:var(--mono);color:var(--text-2);line-height:1.8">
+              utm_source=email<br>utm_medium=crm<br>utm_campaign=clobe-ai_feature-launch<br>utm_term=mkt-push-email<br>utm_content=clobe-ai_feature-launch-cta1
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 알림톡 발송 뷰 -->
+      <div id="sendAlimView" style="display:none" class="send-grid">
+        <div>
+          <div class="section-title" style="margin-bottom:10px">템플릿 선택 <small style="font-size:11px;color:var(--green);font-weight:400;text-transform:none;letter-spacing:0">· 승인된 템플릿만 표시</small></div>
+          <div class="tpl-list">
+            <div class="tpl-item selected">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                <div class="tpl-item-name">부가세 신고 안내</div>
+                <span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:1px 7px;border-radius:20px;font-weight:500">승인</span>
+              </div>
+              <div class="tpl-item-meta"><span class="tag tag-ai" style="font-size:10px"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span> · 코드: AT_VAT_001</div>
+            </div>
+            <div class="tpl-item">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                <div class="tpl-item-name">팩토링 만기 D-14</div>
+                <span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:1px 7px;border-radius:20px;font-weight:500">승인</span>
+              </div>
+              <div class="tpl-item-meta"><span class="tag tag-fin" style="font-size:10px"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</span> · 코드: AT_FIN_002</div>
+            </div>
+            <div class="tpl-item" style="opacity:.45;cursor:not-allowed">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                <div class="tpl-item-name">온보딩 웰컴</div>
+                <span style="font-size:10px;background:#FAEEDA;color:#854F0B;padding:1px 7px;border-radius:20px;font-weight:500">심사중</span>
+              </div>
+              <div class="tpl-item-meta"><span class="tag tag-ai" style="font-size:10px"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span> · 코드: AT_OB_003</div>
+            </div>
+            <div class="tpl-item" style="opacity:.45;cursor:not-allowed">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                <div class="tpl-item-name">세무대리인 초대</div>
+                <span style="font-size:10px;background:var(--ai-bg);color:var(--red);padding:1px 7px;border-radius:20px;font-weight:500">반려</span>
+              </div>
+              <div class="tpl-item-meta"><span class="tag tag-con" style="font-size:10px"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</span> · 코드: AT_CON_004</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section-title" style="margin-bottom:10px">변수 입력</div>
+          <div class="card-sm">
+            <div style="background:var(--bg);border-radius:var(--radius);padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--text-2);line-height:1.7">
+              <strong style="color:var(--text)">부가세 신고 안내</strong> · AT_VAT_001<br>
+              #{고객명}님, 부가세 신고 마감일이 #{마감일}(으)로 #{D-day}일 남았습니다. 클로브 AI에서 지금 바로 확인하세요.
+            </div>
+            <div class="field"><div class="fl">#{고객명}</div><input class="fi" placeholder="예: 홍길동"></div>
+            <div class="field"><div class="fl">#{마감일}</div><input class="fi" placeholder="예: 2026년 7월 25일"></div>
+            <div class="field"><div class="fl">#{D-day}</div><input class="fi" placeholder="예: 7"></div>
+            <div class="field"><div class="fl">발송 대상 <small>수신자 전화번호 (쉼표 구분)</small></div><textarea class="fi" rows="2" placeholder="예: 010-1234-5678, 010-9876-5432" style="resize:none"></textarea></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+              <button class="btn btn-ghost">임시저장</button>
+              <button class="btn btn-primary" onclick="alert('알림톡 발송 요청이 완료되었습니다.')">발송 요청 →</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section-title" style="margin-bottom:10px">미리보기</div>
+          <div style="background:#F9F0DE;border-radius:12px;overflow:hidden;border:0.5px solid #e8e0c8">
+            <div style="background:#F9E000;padding:10px 14px;display:flex;align-items:center;gap:8px">
+              <div style="width:28px;height:28px;border-radius:50%;background:#3A1D1D;display:flex;align-items:center;justify-content:center;font-size:14px">🐝</div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#1a1a1a">클로브AI</div>
+                <div style="font-size:10px;color:#555">카카오 알림톡</div>
+              </div>
+            </div>
+            <div style="padding:14px;background:#F9F0DE">
+              <div style="background:#fff;border-radius:10px;padding:14px;font-size:13px;color:#1a1a1a;line-height:1.8">
+                <strong>홍길동</strong>님, 부가세 신고 마감일이 <strong>2026년 7월 25일</strong>(으)로 <strong>7</strong>일 남았습니다. 클로브 AI에서 지금 바로 확인하세요.
+                <div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px">
+                  <div style="text-align:center;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;color:#3C89F9;font-weight:500">지금 확인하기</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:10px;background:var(--bg);border-radius:var(--radius);padding:10px 12px;font-size:11px;color:var(--text-3);line-height:1.7">
+            · 승인된 템플릿으로만 발송 가능<br>
+            · 변수 형식: #{변수명}<br>
+            · 발송 실패 시 문자(SMS) 대체 발송
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 3: AUTOMATION -->
+    <div class="page" id="page-auto">
+      <div class="page-header">
+        <div class="page-title">자동화</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text-3)">NHN Cloud에서 불러온 자동화 목록</span>
+          <button class="btn btn-ghost btn-sm" onclick="alert('NHN Cloud API에서 최신 목록을 불러왔습니다.')">↻ 새로고침</button>
+          <button class="btn btn-primary btn-sm" onclick="openAutoAddPanel()">+ 자동화 추가</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start">
+
+        <!-- 자동화 목록 -->
+        <div>
+          <!-- 시간 기반 -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <div class="section-title" style="margin-bottom:0">시간 기반</div>
+            <span style="font-size:11px;color:var(--text-3)">· 정해진 일정에 발송 · 타임테이블에 표시됨</span>
+          </div>
+          <div class="card" style="margin-bottom:20px;padding:0;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1fr 90px 90px 80px 60px;padding:10px 16px;background:var(--bg);border-bottom:0.5px solid var(--border);font-size:11px;color:var(--text-3)">
+              <div>표시 이름 / NHN 원본명</div>
+              <div style="text-align:center">채널</div>
+              <div style="text-align:center">마지막 발송</div>
+              <div style="text-align:center">발송 수</div>
+              <div style="text-align:center">상태</div>
+            </div>
+            <div class="auto-row-new" onclick="openAutoPanel('time_vat')" style="cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">부가세 신고 D-7 리마인더</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">NHN: vat_notice_d7 · 매월 18일 09:00</div>
+              </div>
+              <div style="text-align:center">
+                <span style="font-size:10px;background:#E6F1FB;color:#185FA5;padding:2px 7px;border-radius:20px;font-weight:500">이메일</span>
+                <span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:2px 7px;border-radius:20px;font-weight:500;margin-left:2px">알림톡</span>
+              </div>
+              <div style="text-align:center;font-size:12px;color:var(--text-2)">4월 18일</div>
+              <div style="text-align:center;font-size:13px">48,200</div>
+              <div class="toggle-wrap"><button class="toggle on" onclick="event.stopPropagation();this.classList.toggle('on');this.classList.toggle('off')"></button></div>
+            </div>
+            <div class="auto-row-new" onclick="openAutoPanel('time_report')" style="cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">세무대리인 월간 리포트</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">NHN: connect_monthly_report · 매월 1일 08:00</div>
+              </div>
+              <div style="text-align:center">
+                <span style="font-size:10px;background:#E6F1FB;color:#185FA5;padding:2px 7px;border-radius:20px;font-weight:500">이메일</span>
+              </div>
+              <div style="text-align:center;font-size:12px;color:var(--text-2)">4월 1일</div>
+              <div style="text-align:center;font-size:13px">2,180</div>
+              <div class="toggle-wrap"><button class="toggle off" onclick="event.stopPropagation();this.classList.toggle('on');this.classList.toggle('off')"></button></div>
+            </div>
+            <div class="auto-row-new" onclick="openAutoPanel('time_factoring')" style="cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">팩토링 만기 안내</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">NHN: fin_expiry_d14 · 만기 D-14</div>
+              </div>
+              <div style="text-align:center">
+                <span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:2px 7px;border-radius:20px;font-weight:500">알림톡</span>
+              </div>
+              <div style="text-align:center;font-size:12px;color:var(--text-2)">3일 전</div>
+              <div style="text-align:center;font-size:13px">312</div>
+              <div class="toggle-wrap"><button class="toggle on" onclick="event.stopPropagation();this.classList.toggle('on');this.classList.toggle('off')"></button></div>
+            </div>
+          </div>
+
+          <!-- 조건 기반 -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <div class="section-title" style="margin-bottom:0">조건 기반</div>
+            <span style="font-size:11px;color:var(--text-3)">· 유저 행동 발생 시 실시간 발송 · 발송 시점 예측 불가</span>
+          </div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1fr 90px 120px 90px 60px;padding:10px 16px;background:var(--bg);border-bottom:0.5px solid var(--border);font-size:11px;color:var(--text-3)">
+              <div>표시 이름 / NHN 원본명</div>
+              <div style="text-align:center">채널</div>
+              <div style="text-align:center">트리거 조건</div>
+              <div style="text-align:center">오늘 발송</div>
+              <div style="text-align:center">상태</div>
+            </div>
+            <div class="auto-row-new auto-row-cond" onclick="openAutoPanel('cond_onboarding')" style="cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">가입 후 3일 온보딩</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">NHN: onboarding_d3 · 회원가입 후 72시간</div>
+              </div>
+              <div style="text-align:center">
+                <span style="font-size:10px;background:#E6F1FB;color:#185FA5;padding:2px 7px;border-radius:20px;font-weight:500">이메일</span>
+                <span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:2px 7px;border-radius:20px;font-weight:500;margin-left:2px">알림톡</span>
+              </div>
+              <div style="text-align:center"><span style="font-size:11px;background:var(--ai-bg);color:var(--ai-text);padding:2px 8px;border-radius:20px">가입 이벤트</span></div>
+              <div style="text-align:center;font-size:13px;font-weight:500">72명</div>
+              <div class="toggle-wrap"><button class="toggle on" onclick="event.stopPropagation();this.classList.toggle('on');this.classList.toggle('off')"></button></div>
+            </div>
+            <div class="auto-row-new auto-row-cond" onclick="openAutoPanel('cond_inactive')" style="cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">미로그인 리마인더</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">NHN: inactive_14d · 14일 연속 미접속</div>
+              </div>
+              <div style="text-align:center">
+                <span style="font-size:10px;background:#E6F1FB;color:#185FA5;padding:2px 7px;border-radius:20px;font-weight:500">이메일</span>
+              </div>
+              <div style="text-align:center"><span style="font-size:11px;background:var(--ai-bg);color:var(--ai-text);padding:2px 8px;border-radius:20px">비활성 감지</span></div>
+              <div style="text-align:center;font-size:13px;font-weight:500">341명</div>
+              <div class="toggle-wrap"><button class="toggle on" onclick="event.stopPropagation();this.classList.toggle('on');this.classList.toggle('off')"></button></div>
+            </div>
+            <div class="auto-row-new auto-row-cond" onclick="openAutoPanel('cond_first_tx')" style="cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">첫 거래 등록 축하</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">NHN: first_transaction · 최초 거래 데이터 입력</div>
+              </div>
+              <div style="text-align:center">
+                <span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:2px 7px;border-radius:20px;font-weight:500">알림톡</span>
+              </div>
+              <div style="text-align:center"><span style="font-size:11px;background:var(--ai-bg);color:var(--ai-text);padding:2px 8px;border-radius:20px">거래 이벤트</span></div>
+              <div style="text-align:center;font-size:13px;font-weight:500">28명</div>
+              <div class="toggle-wrap"><button class="toggle on" onclick="event.stopPropagation();this.classList.toggle('on');this.classList.toggle('off')"></button></div>
+            </div>
+            <div class="auto-row-new auto-row-cond" onclick="openAutoPanel('cond_plan')" style="cursor:pointer">
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text)">플랜 업그레이드 유도</div>
+                <div style="font-size:11px;color:var(--text-3);margin-top:2px">NHN: plan_expire_d3 · 무료 플랜 30일 만료 D-3</div>
+              </div>
+              <div style="text-align:center">
+                <span style="font-size:10px;background:#E6F1FB;color:#185FA5;padding:2px 7px;border-radius:20px;font-weight:500">이메일</span>
+              </div>
+              <div style="text-align:center"><span style="font-size:11px;background:var(--fin-bg);color:var(--fin-text);padding:2px 8px;border-radius:20px">플랜 만료</span></div>
+              <div style="text-align:center;font-size:13px;font-weight:500;color:var(--text-3)">0명</div>
+              <div class="toggle-wrap"><button class="toggle on" onclick="event.stopPropagation();this.classList.toggle('on');this.classList.toggle('off')"></button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 사이드 패널 -->
+        <div id="autoPanel" style="display:none;position:sticky;top:24px">
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="padding:14px 16px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+              <div style="font-size:13px;font-weight:600;color:var(--text)" id="panelTitle">자동화 설정</div>
+              <button onclick="closeAutoPanel()" style="border:none;background:none;cursor:pointer;color:var(--text-3);font-size:16px;font-family:var(--font);padding:0 4px">✕</button>
+            </div>
+
+            <!-- 편집 모드: NHN 원본 (읽기전용) -->
+            <div id="panelReadonlySection" style="padding:14px 16px;border-bottom:0.5px solid var(--border);background:var(--bg)">
+              <div style="font-size:10px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">NHN Cloud · 읽기전용</div>
+              <div style="display:grid;grid-template-columns:80px 1fr;gap:6px;font-size:12px">
+                <div style="color:var(--text-3)">원본명</div>
+                <div style="color:var(--text-2);font-family:var(--mono)" id="panelNhnName">—</div>
+                <div style="color:var(--text-3)">트리거</div>
+                <div style="color:var(--text-2)" id="panelTrigger">—</div>
+                <div style="color:var(--text-3)">채널</div>
+                <div id="panelChannelBadges">—</div>
+                <div style="color:var(--text-3)">알림톡 코드</div>
+                <div style="color:var(--text-2);font-family:var(--mono)" id="panelTemplateCode">—</div>
+              </div>
+            </div>
+
+            <!-- 추가 모드: NHN 자동화 선택 -->
+            <div id="panelAddSection" style="display:none;padding:14px 16px;border-bottom:0.5px solid var(--border);background:var(--bg)">
+              <div style="font-size:10px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">NHN Cloud 자동화 선택</div>
+              <div class="field">
+                <div class="fl">NHN 자동화 <small>불러온 목록에서 선택</small></div>
+                <select class="fi" id="panelNhnSelect" onchange="onNhnSelect(this.value)" style="font-size:12px;font-family:var(--mono)">
+                  <option value="">— 선택하세요</option>
+                  <option value="vat_notice_d7">vat_notice_d7 · 매월 18일 09:00</option>
+                  <option value="connect_monthly_report">connect_monthly_report · 매월 1일 08:00</option>
+                  <option value="fin_expiry_d14">fin_expiry_d14 · 만기 D-14</option>
+                  <option value="onboarding_d3">onboarding_d3 · 회원가입 후 72시간</option>
+                  <option value="inactive_14d">inactive_14d · 14일 연속 미접속</option>
+                  <option value="first_transaction">first_transaction · 최초 거래 입력</option>
+                </select>
+              </div>
+              <div id="panelNhnPreview" style="display:none;background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-size:12px;color:var(--text-2);line-height:1.7">
+                <div style="display:grid;grid-template-columns:70px 1fr;gap:4px">
+                  <span style="color:var(--text-3)">원본명</span><span id="addNhnName" style="font-family:var(--mono)">—</span>
+                  <span style="color:var(--text-3)">트리거</span><span id="addNhnTrigger">—</span>
+                  <span style="color:var(--text-3)">채널</span><span id="addNhnChannel">—</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- CRM 설정 (수정 가능) — 편집/추가 공통 -->
+            <div style="padding:14px 16px">
+              <div style="font-size:10px;font-weight:500;color:var(--teal);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">CRM 설정</div>
+
+              <div class="field">
+                <div class="fl">표시 이름 <small>CRM에서 보이는 별칭</small></div>
+                <input class="fi" id="panelDisplayName" placeholder="예: 부가세 신고 D-7 리마인더">
+              </div>
+
+              <div class="field">
+                <div class="fl">제품 스큐</div>
+                <div id="panelSkuBadge" style="margin-top:4px"></div>
+                <div id="panelSkuSelectRow" style="display:none;margin-top:4px">
+                  <div class="sku-select-row">
+                    <div class="sku-sel sel-ai" onclick="setPanelSku('ai',this)"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" style="width:14px;height:14px" alt="">클로브AI</div>
+                    <div class="sku-sel" onclick="setPanelSku('fin',this)"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" style="width:14px;height:14px" alt="">클로브금융</div>
+                    <div class="sku-sel" onclick="setPanelSku('con',this)"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" style="width:14px;height:14px" alt="">클로브커넥트</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field" id="panelEmailTplField">
+                <div class="fl">연결 이메일 템플릿</div>
+                <select class="fi" style="font-size:13px">
+                  <option>신기능 출시 안내</option>
+                  <option selected>세금 신고 리마인더</option>
+                  <option>월간 뉴스레터</option>
+                  <option>팩토링 만기 안내</option>
+                </select>
+              </div>
+
+              <div class="field" id="panelAlimTplField">
+                <div class="fl">알림톡 templateCode <small>카카오 승인 코드</small></div>
+                <input class="fi" id="panelAlimCode" placeholder="예: AT_VAT_001" style="font-family:var(--mono);font-size:13px">
+                <div style="font-size:11px;color:var(--text-3);margin-top:4px" id="panelAlimCodeNote">NHN Cloud에서 불러온 값 · 필요 시 수정 가능</div>
+              </div>
+
+              <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+                <button class="btn btn-ghost btn-sm" onclick="closeAutoPanel()">취소</button>
+                <button class="btn btn-primary btn-sm" id="panelSaveBtn" onclick="alert('저장되었습니다.')">저장</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- PAGE 4: HISTORY -->
+    <div class="page" id="page-hist">
+      <div class="page-header">
+        <div class="page-title">발송이력</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="sku-filter" style="margin-bottom:0">
+            <div class="sku-chip on-ai" onclick="toggleChip(this,'on-ai')"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</div>
+            <div class="sku-chip on-fin" onclick="toggleChip(this,'on-fin')"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</div>
+            <div class="sku-chip on-con" onclick="toggleChip(this,'on-con')"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hist-row head">
+          <div>발송일시</div><div>캠페인명</div><div>제품</div><div style="text-align:right">발송</div><div style="text-align:right">오픈율</div><div style="text-align:right">클릭률</div><div style="text-align:right">발송자</div>
+        </div>
+        <div class="hist-row">
+          <div style="font-size:12px;color:var(--text-2)">04.08 14:32</div>
+          <div style="font-size:13px;font-weight:500">4월 부가세 신고 안내</div>
+          <div><span class="tag tag-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span></div>
+          <div style="text-align:right">48,200</div><div style="text-align:right" class="up">82.1%</div><div style="text-align:right" class="up">27.4%</div><div style="text-align:right;font-size:12px;color:var(--text-2)">앰버</div>
+        </div>
+        <div class="hist-row">
+          <div style="font-size:12px;color:var(--text-2)">04.05 10:00</div>
+          <div style="font-size:13px;font-weight:500">신기능 소개</div>
+          <div><span class="tag tag-con"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</span></div>
+          <div style="text-align:right">62,400</div><div style="text-align:right">34.5%</div><div style="text-align:right">9.1%</div><div style="text-align:right;font-size:12px;color:var(--text-2)">자동화</div>
+        </div>
+        <div class="hist-row">
+          <div style="font-size:12px;color:var(--text-2)">04.03 09:15</div>
+          <div style="font-size:13px;font-weight:500">팩토링 만기 안내</div>
+          <div><span class="tag tag-fin"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</span></div>
+          <div style="text-align:right">21,300</div><div style="text-align:right">44.1%</div><div style="text-align:right">12.0%</div><div style="text-align:right;font-size:12px;color:var(--text-2)">자동화</div>
+        </div>
+        <div class="hist-row">
+          <div style="font-size:12px;color:var(--text-2)">03.28 11:00</div>
+          <div style="font-size:13px;font-weight:500">무료 플랜 전환 유도</div>
+          <div><span class="tag tag-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span></div>
+          <div style="text-align:right">38,900</div><div style="text-align:right" class="down">18.2%</div><div style="text-align:right" class="down">3.8%</div><div style="text-align:right;font-size:12px;color:var(--text-2)">앰버</div>
+        </div>
+        <div class="hist-row">
+          <div style="font-size:12px;color:var(--text-2)">03.25 09:00</div>
+          <div style="font-size:13px;font-weight:500">3월 뉴스레터</div>
+          <div><span class="tag tag-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span></div>
+          <div style="text-align:right">55,100</div><div style="text-align:right;color:var(--amber)">—</div><div style="text-align:right;color:var(--amber)">—</div><div style="text-align:right;font-size:12px;color:var(--text-2)">앰버</div>
+        </div>
+        <div class="hist-row">
+          <div style="font-size:12px;color:var(--text-2)">03.20 10:00</div>
+          <div style="font-size:13px;font-weight:500">법인 고객 세무 안내</div>
+          <div><span class="tag tag-fin"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</span></div>
+          <div style="text-align:right">21,300</div><div style="text-align:right">44.1%</div><div style="text-align:right;color:var(--amber)">—</div><div style="text-align:right;font-size:12px;color:var(--text-2)">앰버</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 5: WARNINGS -->
+    <div class="page" id="page-warn">
+      <div class="page-header">
+        <div class="page-title">워닝 <span class="badge-red" style="font-size:13px;padding:2px 9px;vertical-align:middle" id="warnBadgeTotal">5</span></div>
+      </div>
+
+      <!-- SECTION 1: CTR 미달 자동화 -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="section-title" style="margin-bottom:0">CTR 미달 자동화</div>
+          <span class="badge-red" style="font-size:10px">2</span>
+          <span style="font-size:11px;color:var(--text-3)">· 지난 1주일 기준 · 기준 CTR 10%</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text-2)">기준 CTR</span>
+          <div style="display:flex;align-items:center;border:0.5px solid var(--border-md);border-radius:var(--radius);overflow:hidden;background:var(--surface)">
+            <input id="ctrThreshold" type="number" value="10" min="1" max="100"
+              style="width:52px;font-size:13px;padding:5px 8px;border:none;text-align:center;font-family:var(--font);color:var(--text);background:transparent;outline:none">
+            <span style="font-size:12px;color:var(--text-2);padding-right:8px">%</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="renderCtrTable()">적용</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:24px;padding:0;overflow:hidden">
+        <div style="display:grid;grid-template-columns:1fr 80px 80px 80px 80px 110px;gap:0;padding:10px 20px;border-bottom:0.5px solid var(--border);background:var(--bg)">
+          <div style="font-size:11px;color:var(--text-3)">자동화명</div>
+          <div style="font-size:11px;color:var(--text-3);text-align:center">제품</div>
+          <div style="font-size:11px;color:var(--text-3);text-align:right">발송</div>
+          <div style="font-size:11px;color:var(--text-3);text-align:right">CTR</div>
+          <div style="font-size:11px;color:var(--text-3);text-align:right">기준 대비</div>
+          <div style="font-size:11px;color:var(--text-3);text-align:center">조치</div>
+        </div>
+        <div id="ctrTableBody"></div>
+      </div>
+
+      <!-- SECTION 2: 추적 미수집 -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <div class="section-title" style="margin-bottom:0">추적 미수집</div>
+        <span class="badge-red" style="font-size:10px">3</span>
+        <span style="font-size:11px;color:var(--text-3)">· 발송 완료됐지만 오픈/클릭 데이터 없음</span>
+      </div>
+      <div class="warn-card">
+        <div class="warn-card-title">3월 뉴스레터 <span class="tag tag-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span> <span class="warn-pill">오픈율 없음</span></div>
+        <div class="warn-card-desc">03.25 발송 · 55,100건 · 추적 픽셀이 삽입되지 않아 오픈 데이터가 수집되지 않았습니다. 템플릿에 픽셀 삽입 여부를 확인하세요.</div>
+        <div style="margin-top:10px;display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm">원인 확인</button>
+          <button class="btn btn-ghost btn-sm">무시</button>
+        </div>
+      </div>
+      <div class="warn-card">
+        <div class="warn-card-title">법인 고객 세무 안내 <span class="tag tag-fin"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</span> <span class="warn-pill">클릭 데이터 없음</span></div>
+        <div class="warn-card-desc">03.20 발송 · 21,300건 · CTA 링크에 UTM 파라미터가 누락되어 클릭 추적이 불가합니다. 발송 전 UTM 자동 생성 로직이 적용되지 않은 구버전 템플릿입니다.</div>
+        <div style="margin-top:10px;display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm">원인 확인</button>
+          <button class="btn btn-ghost btn-sm">무시</button>
+        </div>
+      </div>
+      <div class="warn-card">
+        <div class="warn-card-title">온보딩 Day 3 <span class="tag tag-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span> <span class="warn-pill">수신확인 불가</span></div>
+        <div class="warn-card-desc">04.01 자동화 발송 · NHN 발송 성공 응답은 수신했으나 이후 로그가 미수집 상태입니다. NHN 콘솔에서 발송 상태를 직접 확인해주세요.</div>
+        <div style="margin-top:10px;display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm">원인 확인</button>
+          <button class="btn btn-ghost btn-sm">무시</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OFF 확인 모달 -->
+    <div id="offModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999;align-items:center;justify-content:center">
+      <div style="background:var(--surface);border-radius:var(--radius-lg);padding:28px;max-width:400px;width:90%;border:0.5px solid var(--border)">
+        <div style="font-size:16px;font-weight:600;margin-bottom:8px;color:var(--text)">자동화 중단 요청</div>
+        <div style="font-size:13px;color:var(--text-2);margin-bottom:6px">다음 자동화를 OFF 하시겠습니까?</div>
+        <div id="offModalName" style="font-size:14px;font-weight:500;color:var(--text);background:var(--bg);padding:10px 14px;border-radius:var(--radius);margin-bottom:20px"></div>
+        <div style="font-size:12px;color:var(--amber);margin-bottom:20px">⚠️ OFF 이후 해당 자동화는 발송을 중단합니다. 자동화 탭에서 다시 ON 할 수 있습니다.</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="closeOffModal()">취소</button>
+          <button class="btn" style="background:var(--red);color:#fff;border-color:var(--red)" onclick="confirmOff()">OFF 요청</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 6: TEMPLATE MANAGE -->
+    <div class="page" id="page-tpl">
+      <div class="page-header">
+        <div class="page-title" id="tplPageTitle">템플릿 관리</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" id="btnBackToList" style="display:none" onclick="showListView()">← 목록으로</button>
+          <button class="btn btn-primary btn-sm" id="btnNewTpl" onclick="showCreateForm()">+ 새 템플릿</button>
+        </div>
+      </div>
+
+      <!-- LIST VIEW -->
+      <div id="tplListView">
+        <!-- 채널 탭 -->
+        <div style="display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:16px">
+          <div id="tplTabEmail" onclick="setTplTab('email')" style="font-size:13px;padding:10px 20px;cursor:pointer;color:var(--text);border-bottom:2px solid var(--teal);font-weight:500">이메일</div>
+          <div id="tplTabAlim" onclick="setTplTab('alim')" style="font-size:13px;padding:10px 20px;cursor:pointer;color:var(--text-2);border-bottom:2px solid transparent">알림톡</div>
+        </div>
+
+        <!-- 이메일 템플릿 목록 -->
+        <div id="tplEmailList">
+          <div class="tpl-manage-grid">
+            <div>
+              <div class="section-title" style="margin-bottom:10px">이메일 템플릿</div>
+              <div class="tpl-manage-list">
+                <div class="tpl-manage-item selected">
+                  <div class="tpl-manage-item-name">신기능 출시 안내</div>
+                  <div class="tpl-manage-item-meta"><span class="tag tag-ai" style="font-size:10px"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span> <span class="tag tag-cat" style="font-size:10px">기능안내</span></div>
+                </div>
+                <div class="tpl-manage-item">
+                  <div class="tpl-manage-item-name">세금 신고 리마인더</div>
+                  <div class="tpl-manage-item-meta"><span class="tag tag-ai" style="font-size:10px"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span> <span class="tag tag-cat" style="font-size:10px">리마인더</span></div>
+                </div>
+                <div class="tpl-manage-item">
+                  <div class="tpl-manage-item-name">팩토링 만기 안내</div>
+                  <div class="tpl-manage-item-meta"><span class="tag tag-fin" style="font-size:10px"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</span> <span class="tag tag-cat" style="font-size:10px">리마인더</span></div>
+                </div>
+                <div class="tpl-manage-item">
+                  <div class="tpl-manage-item-name">세무대리인 리포트</div>
+                  <div class="tpl-manage-item-meta"><span class="tag tag-con" style="font-size:10px"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</span> <span class="tag tag-cat" style="font-size:10px">공지</span></div>
+                </div>
+                <button class="btn-new-tpl" onclick="showCreateForm()">+ 새 이메일 템플릿</button>
+              </div>
+            </div>
+            <div class="card-sm">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                <div style="font-size:15px;font-weight:600">신기능 출시 안내</div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-ghost btn-sm" onclick="showCreateForm()">수정</button>
+                  <button class="btn btn-ghost btn-sm" style="color:var(--red)">삭제</button>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+                <span class="tag tag-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span>
+                <span class="tag tag-cat">기능안내</span>
+                <span style="font-size:12px;color:var(--text-3)">최근 수정: 04.01 · 생성자: 앰버</span>
+              </div>
+              <div class="utm-summary" style="margin-bottom:14px">
+                <div class="utm-row"><span class="utm-key">utm_campaign</span><span class="utm-val">clobe-ai_feature-launch <span class="auto-tag">자동</span></span></div>
+                <div class="utm-row"><span class="utm-key">utm_content</span><span class="utm-val">clobe-ai_feature-launch-cta1 <span class="auto-tag">자동</span></span></div>
+                <div class="utm-row"><span class="utm-key">utm_term</span><span class="utm-val">발송 시 주입 <span class="auto-tag">자동</span></span></div>
+              </div>
+              <div style="font-size:12px;color:var(--text-3);margin-bottom:6px">변수 목록</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+                <span style="font-size:11px;font-family:var(--mono);background:var(--bg);padding:3px 8px;border-radius:var(--radius);color:var(--text-2)">{{제목}}</span>
+                <span style="font-size:11px;font-family:var(--mono);background:var(--bg);padding:3px 8px;border-radius:var(--radius);color:var(--text-2)">{{기능명}}</span>
+                <span style="font-size:11px;font-family:var(--mono);background:var(--bg);padding:3px 8px;border-radius:var(--radius);color:var(--text-2)">{{기능설명}}</span>
+              </div>
+              <div style="font-size:12px;color:var(--text-3);margin-bottom:6px">마케팅수신동의 블럭</div>
+              <div style="font-size:12px;color:var(--green);font-weight:500">포함됨</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 알림톡 템플릿 목록 -->
+        <div id="tplAlimList" style="display:none">
+          <div style="background:var(--amber-bg);border:0.5px solid var(--amber-border);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;font-size:12px;color:#633806;line-height:1.6">
+            알림톡 템플릿은 카카오 검수 후 승인된 것만 발송 가능합니다. 검수 기간은 영업일 기준 2~3일 소요됩니다.
+          </div>
+          <div class="tpl-manage-grid">
+            <div>
+              <div class="section-title" style="margin-bottom:10px">알림톡 템플릿</div>
+              <div class="tpl-manage-list">
+                <div class="tpl-manage-item selected">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                    <div class="tpl-manage-item-name">부가세 신고 안내</div>
+                    <span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:1px 7px;border-radius:20px;font-weight:500">승인</span>
+                  </div>
+                  <div class="tpl-manage-item-meta"><span class="tag tag-ai" style="font-size:10px"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span> · AT_VAT_001</div>
+                </div>
+                <div class="tpl-manage-item">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                    <div class="tpl-manage-item-name">팩토링 만기 D-14</div>
+                    <span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:1px 7px;border-radius:20px;font-weight:500">승인</span>
+                  </div>
+                  <div class="tpl-manage-item-meta"><span class="tag tag-fin" style="font-size:10px"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</span> · AT_FIN_002</div>
+                </div>
+                <div class="tpl-manage-item">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                    <div class="tpl-manage-item-name">온보딩 웰컴</div>
+                    <span style="font-size:10px;background:#FAEEDA;color:#854F0B;padding:1px 7px;border-radius:20px;font-weight:500">심사중</span>
+                  </div>
+                  <div class="tpl-manage-item-meta"><span class="tag tag-ai" style="font-size:10px"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span> · AT_OB_003</div>
+                </div>
+                <div class="tpl-manage-item">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+                    <div class="tpl-manage-item-name">세무대리인 초대</div>
+                    <span style="font-size:10px;background:#FCEBEB;color:#A32D2D;padding:1px 7px;border-radius:20px;font-weight:500">반려</span>
+                  </div>
+                  <div class="tpl-manage-item-meta"><span class="tag tag-con" style="font-size:10px"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</span> · AT_CON_004</div>
+                </div>
+                <button class="btn-new-tpl" onclick="showAlimCreateForm()">+ 새 알림톡 템플릿</button>
+              </div>
+            </div>
+            <div class="card-sm" id="alimTplDetail">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                <div>
+                  <div style="font-size:15px;font-weight:600;margin-bottom:4px">부가세 신고 안내</div>
+                  <div style="font-size:12px;color:var(--text-3)">코드: AT_VAT_001</div>
+                </div>
+                <span style="font-size:12px;background:#E1F5EE;color:#0F6E56;padding:4px 12px;border-radius:20px;font-weight:500">승인</span>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+                <span class="tag tag-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</span>
+                <span class="tag tag-cat">리마인더</span>
+                <span style="font-size:12px;color:var(--text-3)">승인일: 04.02 · 생성자: 앰버</span>
+              </div>
+              <div style="font-size:12px;color:var(--text-3);margin-bottom:6px">템플릿 내용</div>
+              <div style="background:var(--bg);border-radius:var(--radius);padding:12px;font-size:12px;color:var(--text-2);line-height:1.8;margin-bottom:14px;font-family:var(--mono)">
+                #{고객명}님, 부가세 신고 마감일이 #{마감일}(으)로 #{D-day}일 남았습니다. 클로브 AI에서 지금 바로 확인하세요.
+              </div>
+              <div style="font-size:12px;color:var(--text-3);margin-bottom:6px">변수 목록</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+                <span style="font-size:11px;font-family:var(--mono);background:var(--bg);padding:3px 8px;border-radius:var(--radius);color:var(--text-2)">#{고객명}</span>
+                <span style="font-size:11px;font-family:var(--mono);background:var(--bg);padding:3px 8px;border-radius:var(--radius);color:var(--text-2)">#{마감일}</span>
+                <span style="font-size:11px;font-family:var(--mono);background:var(--bg);padding:3px 8px;border-radius:var(--radius);color:var(--text-2)">#{D-day}</span>
+              </div>
+              <div style="font-size:12px;color:var(--text-3);margin-bottom:6px">버튼</div>
+              <div style="font-size:12px;color:var(--text-2);margin-bottom:16px">웹링크 · 지금 확인하기 → app.clobe.ai</div>
+              <div style="font-size:11px;color:var(--text-3);background:var(--bg);padding:8px 12px;border-radius:var(--radius)">승인된 템플릿은 내용 수정 불가. 수정 필요 시 새 템플릿으로 재등록해주세요.</div>
+            </div>
+          </div>
+
+          <!-- 반려 케이스 상세 (숨김) -->
+          <div id="alimRejectDetail" style="display:none;margin-top:12px">
+            <div style="background:#FCEBEB;border:0.5px solid #F09595;border-radius:var(--radius-lg);padding:14px 18px">
+              <div style="font-size:13px;font-weight:500;color:#A32D2D;margin-bottom:6px">세무대리인 초대 — 반려 사유</div>
+              <div style="font-size:12px;color:#791F1F;line-height:1.7;margin-bottom:12px">광고성 문구 포함으로 반려되었습니다. 알림톡은 정보성 메시지만 허용됩니다. "지금 가입하면 혜택" 문구를 제거하고 재신청해주세요.</div>
+              <button class="btn btn-sm" style="background:#E24B4A;color:#fff;border-color:#E24B4A" onclick="showAlimCreateForm()">수정 후 재검수 요청</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CREATE VIEW -->
+      <div id="tplCreateView" style="display:none">
+        <div class="create-body">
+          <div class="create-left">
+            <div class="form-section">
+              <div class="form-section-title">기본 정보</div>
+              <div class="field">
+                <div class="fl">템플릿명 <small>→ utm_campaign 슬러그 자동 생성</small></div>
+                <input class="fi" id="createName" placeholder="예: 4월 부가세 신고 안내" oninput="updateCreate()">
+                <div class="slug-box" id="createSlug">utm_campaign: —</div>
+              </div>
+              <div class="field">
+                <div class="fl">제품 스큐</div>
+                <div class="sku-select-row">
+                  <div class="sku-sel sel-ai" onclick="setCreateSku('ai',this)"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</div>
+                  <div class="sku-sel" onclick="setCreateSku('fin',this)"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</div>
+                  <div class="sku-sel" onclick="setCreateSku('con',this)"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</div>
+                </div>
+              </div>
+              <div class="field">
+                <div class="fl">카테고리</div>
+                <div class="cat-row">
+                  <button class="cat-btn on" onclick="setCat(this)">기능안내</button>
+                  <button class="cat-btn" onclick="setCat(this)">리마인더</button>
+                  <button class="cat-btn" onclick="setCat(this)">마케팅</button>
+                  <button class="cat-btn" onclick="setCat(this)">온보딩</button>
+                  <button class="cat-btn" onclick="setCat(this)">공지</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section-title">이메일 구조</div>
+              <div class="field">
+                <div class="fl">제목 <small>변수는 {{변수명}} 형식</small></div>
+                <input class="fi" id="createSubject" placeholder="예: 클로브 AI, {{기능명}} 출시" oninput="updateCreate()">
+              </div>
+              <div class="field">
+                <div class="fl">본문</div>
+                <textarea class="fi" id="createBody" rows="4" placeholder="예: 안녕하세요, {{회사명}} 담당자님. 새로운 기능이 출시되었습니다." oninput="updateCreate()" style="resize:none"></textarea>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section-title">CTA 버튼 <span style="font-size:11px;font-weight:400;color:var(--text-3)">→ utm_content 자동 넘버링</span></div>
+              <div id="createCtaBlocks">
+                <div class="cta-block" data-idx="1">
+                  <div class="cta-header">
+                    <span class="cta-label">버튼 1</span>
+                    <button class="cta-remove" onclick="removeCtaBlock(this)">삭제</button>
+                  </div>
+                  <div class="cta-grid">
+                    <div><div class="fl">버튼 텍스트</div><input class="fi" placeholder="예: 지금 확인하기" oninput="updateCreate()"></div>
+                    <div><div class="fl">랜딩 URL</div><input class="fi" placeholder="https://app.clobe.ai/..." oninput="updateCreate()"></div>
+                  </div>
+                  <div class="utm-auto-box" id="ctaUtm1">utm_content: —</div>
+                </div>
+              </div>
+              <button class="btn-add-cta" onclick="addCtaBlock()">+ 버튼 추가</button>
+            </div>
+
+            <div class="form-section">
+              <div class="form-section-title">마케팅수신동의 블럭</div>
+              <div class="consent-toggle-row">
+                <div>
+                  <div class="consent-toggle-info">마케팅수신동의 유도 블럭 포함</div>
+                  <div class="consent-toggle-desc">이메일 하단에 수신동의 안내 및 혜택 블럭을 추가합니다</div>
+                </div>
+                <button class="toggle off" id="consentToggle" onclick="toggleConsent(this)"></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="create-right">
+            <div class="section-title" style="margin-bottom:10px">UTM 자동 생성</div>
+            <div class="utm-summary" style="margin-bottom:16px">
+              <div class="utm-row"><span class="utm-key">utm_source</span><span class="utm-val">email <span class="fixed-tag">고정</span></span></div>
+              <div class="utm-row"><span class="utm-key">utm_medium</span><span class="utm-val">crm <span class="fixed-tag">고정</span></span></div>
+              <div class="utm-row"><span class="utm-key">utm_campaign</span><span class="utm-val" id="utmCampaignPreview">— <span class="auto-tag">자동</span></span></div>
+              <div class="utm-row"><span class="utm-key">utm_term</span><span class="utm-val">발송 시 주입 <span class="auto-tag">자동</span></span></div>
+              <div class="utm-row"><span class="utm-key">utm_content</span><span class="utm-val" id="utmContentPreview">버튼 추가 시 생성 <span class="auto-tag">자동</span></span></div>
+            </div>
+            <div class="section-title" style="margin-bottom:10px">이메일 미리보기</div>
+            <div class="email-preview">
+              <div class="ep-header">
+                <div class="ep-logo-row">
+                  <img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" class="ep-logo-img" id="createPreviewLogoImg" alt="">
+                  <span class="ep-logo-text" id="createPreviewLogoText">클로브AI</span>
+                </div>
+                <div class="ep-title" id="createPreviewTitle">제목을 입력하세요</div>
+              </div>
+              <div class="ep-body">
+                <div id="createPreviewBody" style="margin-bottom:8px;color:var(--text-2)">본문을 입력하세요</div>
+                <div id="createPreviewCtas"></div>
+                <div id="createPreviewConsent" style="display:none">
+                  <div class="ep-consent">
+                    <div class="ep-consent-title">마케팅 수신동의하고 혜택받기</div>
+                    <div>마케팅 정보 수신에 동의하시면 신규 기능 안내, 세금 절감 팁 등 유용한 정보를 이메일로 받아보실 수 있습니다.</div>
+                    <div style="margin-top:8px"><a class="ep-cta" href="#" style="font-size:11px;padding:5px 12px">수신동의하기</a></div>
+                  </div>
+                </div>
+              </div>
+              <div class="ep-footer">본 메일은 발신전용입니다 · 수신거부</div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+              <button class="btn btn-ghost" onclick="showListView()">취소</button>
+              <button class="btn btn-primary" onclick="alert('템플릿이 저장되었습니다.')">템플릿 저장</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 7: SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <div class="page-title">설정</div>
+      </div>
+
+      <!-- SECTION 1: 일 발송 cap -->
+      <div class="section-title">발송 정책</div>
+      <div class="card" style="margin-bottom:20px">
+
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:20px;border-bottom:0.5px solid var(--border);margin-bottom:20px">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">유저당 일 발송 상한 (Daily Cap)</div>
+            <div style="font-size:12px;color:var(--text-2);line-height:1.6">한 명의 수신자가 하루에 받을 수 있는 이메일 최대 수를 제한합니다.<br>상한 초과 시 해당 발송은 <strong>다음 영업일</strong>로 자동 지연됩니다.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin-left:40px">
+            <span style="font-size:13px;color:var(--text-2)">하루 최대</span>
+            <div style="display:flex;align-items:center;border:0.5px solid var(--border-md);border-radius:var(--radius);overflow:hidden;background:var(--surface)">
+              <button onclick="adjCap(-1)" style="width:32px;height:36px;border:none;background:none;cursor:pointer;font-size:16px;color:var(--text-2);font-family:var(--font)">−</button>
+              <span id="capVal" style="font-size:18px;font-weight:600;color:var(--text);min-width:28px;text-align:center">3</span>
+              <button onclick="adjCap(1)" style="width:32px;height:36px;border:none;background:none;cursor:pointer;font-size:16px;color:var(--text-2);font-family:var(--font)">+</button>
+            </div>
+            <span style="font-size:13px;color:var(--text-2)">통</span>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:20px;border-bottom:0.5px solid var(--border);margin-bottom:20px">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">주말 발송 금지</div>
+            <div style="font-size:12px;color:var(--text-2);line-height:1.6">토요일·일요일에는 이메일을 발송하지 않습니다.<br>주말에 예약되거나 트리거된 발송은 <strong>다음 영업일(월요일)</strong>로 자동 지연됩니다.</div>
+          </div>
+          <div style="margin-left:40px">
+            <button class="toggle on" id="weekendToggle" onclick="this.classList.toggle('on');this.classList.toggle('off');updatePolicyPreview()"></button>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;justify-content:space-between">
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">공휴일 발송 금지</div>
+            <div style="font-size:12px;color:var(--text-2);line-height:1.6">등록된 공휴일에는 이메일을 발송하지 않습니다.<br>공휴일에 예약되거나 트리거된 발송은 <strong>다음 영업일</strong>로 자동 지연됩니다.</div>
+          </div>
+          <div style="margin-left:40px">
+            <button class="toggle on" id="holidayToggle" onclick="this.classList.toggle('on');this.classList.toggle('off');updatePolicyPreview()"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 정책 요약 -->
+      <div id="policyPreview" style="background:var(--teal-light);border:0.5px solid var(--teal-mid);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:20px;font-size:13px;color:var(--teal-dark);line-height:1.8">
+      </div>
+
+      <!-- SECTION 2: 공휴일 관리 -->
+      <div class="section-title">공휴일 관리</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div style="font-size:13px;color:var(--text-2)">2026년 등록된 공휴일 · <span id="holidayCount">14</span>일</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="date" id="newHolidayDate" class="fi" style="width:160px;font-size:12px;padding:6px 10px">
+            <input type="text" id="newHolidayName" class="fi" placeholder="공휴일명 (예: 대체공휴일)" style="width:180px;font-size:12px;padding:6px 10px">
+            <button class="btn btn-primary btn-sm" onclick="addHoliday()">+ 추가</button>
+          </div>
+        </div>
+        <div id="holidayList" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"></div>
+      </div>
+      <!-- ALIMTALK CREATE VIEW -->
+      <div id="tplAlimCreateView" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 300px;gap:16px;align-items:start">
+          <div>
+            <div class="card" style="margin-bottom:12px">
+              <div class="form-section-title" style="margin-bottom:14px;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px;border-bottom:0.5px solid var(--border)">기본 정보</div>
+              <div class="field">
+                <div class="fl">템플릿명 <small>내부 관리용, 카카오에 노출되지 않음</small></div>
+                <input class="fi" placeholder="예: 부가세 신고 D-7 안내">
+              </div>
+              <div class="field">
+                <div class="fl">제품 스큐</div>
+                <div class="sku-select-row">
+                  <div class="sku-sel sel-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" alt="">클로브AI</div>
+                  <div class="sku-sel"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" alt="">클로브금융</div>
+                  <div class="sku-sel"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" alt="">클로브커넥트</div>
+                </div>
+              </div>
+              <div class="field">
+                <div class="fl">카테고리</div>
+                <div class="cat-row">
+                  <button class="cat-btn on" onclick="setCat(this)">리마인더</button>
+                  <button class="cat-btn" onclick="setCat(this)">온보딩</button>
+                  <button class="cat-btn" onclick="setCat(this)">공지</button>
+                  <button class="cat-btn" onclick="setCat(this)">기능안내</button>
+                </div>
+              </div>
+            </div>
+            <div class="card" style="margin-bottom:12px">
+              <div class="form-section-title" style="margin-bottom:14px;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px;border-bottom:0.5px solid var(--border)">템플릿 내용</div>
+              <div class="field">
+                <div class="fl">메시지 유형</div>
+                <div style="display:flex;gap:6px">
+                  <button class="cat-btn on" onclick="setCat(this)">기본형</button>
+                  <button class="cat-btn" onclick="setCat(this)">강조표기형</button>
+                  <button class="cat-btn" onclick="setCat(this)">이미지형</button>
+                </div>
+              </div>
+              <div class="field">
+                <div class="fl">본문 <small>변수는 #{변수명} 형식 · 최대 1,000자</small></div>
+                <textarea class="fi" rows="5" id="alimBody" placeholder="예: #{고객명}님, 부가세 신고 마감일이 #{마감일}(으)로 #{D-day}일 남았습니다." style="resize:none" oninput="updateAlimPreview()"></textarea>
+                <div style="font-size:11px;color:var(--text-3);margin-top:4px;text-align:right" id="alimCharCount">0 / 1,000자</div>
+              </div>
+              <div class="field">
+                <div class="fl">버튼 (선택)</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div><div class="fl" style="font-size:11px">버튼 텍스트</div><input class="fi" placeholder="예: 지금 확인하기" oninput="updateAlimPreview()"></div>
+                  <div><div class="fl" style="font-size:11px">연결 URL</div><input class="fi" placeholder="https://app.clobe.ai/..."></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button class="btn btn-ghost" onclick="document.getElementById('btnBackToList').click()">취소</button>
+              <button class="btn btn-primary" onclick="alert('검수 요청이 완료되었습니다.\n카카오 검수는 영업일 2~3일 소요됩니다.\n승인 후 발송 가능합니다.')">저장 및 검수 요청 →</button>
+            </div>
+          </div>
+
+          <!-- 우측: 미리보기 -->
+          <div>
+            <div class="section-title" style="margin-bottom:10px">카카오톡 미리보기</div>
+            <div style="background:#F9F0DE;border-radius:12px;overflow:hidden;border:0.5px solid #e8e0c8;margin-bottom:12px">
+              <div style="background:#F9E000;padding:10px 14px;display:flex;align-items:center;gap:8px">
+                <div style="width:28px;height:28px;border-radius:50%;background:#3A1D1D;display:flex;align-items:center;justify-content:center;font-size:14px">🐝</div>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:#1a1a1a">클로브AI</div>
+                  <div style="font-size:10px;color:#555">카카오 알림톡</div>
+                </div>
+              </div>
+              <div style="padding:14px;background:#F9F0DE">
+                <div style="background:#fff;border-radius:10px;padding:14px;font-size:13px;color:#1a1a1a;line-height:1.8">
+                  <div id="alimPreviewBody" style="color:#888;font-size:12px">본문을 입력하면 미리보기가 표시됩니다.</div>
+                  <div id="alimPreviewBtn" style="display:none;margin-top:12px;border-top:1px solid #eee;padding-top:10px">
+                    <div style="text-align:center;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:12px;color:#3C89F9;font-weight:500">지금 확인하기</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="background:var(--amber-bg);border:0.5px solid var(--amber-border);border-radius:var(--radius);padding:10px 12px;font-size:11px;color:#633806;line-height:1.7">
+              · 승인된 템플릿은 내용 수정 불가<br>
+              · 수정 필요 시 새 코드로 재등록 필요<br>
+              · 광고성 문구 포함 시 반려될 수 있음<br>
+              · 변수: #{변수명} 형식
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+</div><!-- end shell -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// NAV
+function goPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  el.classList.add('active');
+}
+
+// SKU CHIP TOGGLE
+function toggleChip(el, cls) {
+  if(el.classList.contains(cls)) el.classList.remove(cls);
+  else el.classList.add(cls);
+}
+
+// DASHBOARD CHART
+const labels = ['4/1','4/2','4/3','4/4','4/5','4/6','4/7','4/8','4/9','4/10','4/11','4/12','4/13','4/14','4/15','4/16','4/17','4/18','4/19','4/20','4/21','4/22','4/23','4/24','4/25','4/26','4/27','4/28','4/29','4/30'];
+const d1 = [4200,3800,5100,6200,4900,2100,2300,5800,6100,7200,5400,4800,5200,3900,2200,2400,6100,6800,7400,5900,4700,4200,2100,2300,8200,7600,6900,5800,4400,3900];
+const d2 = [1200,900,1400,1800,1300,600,700,1600,1800,2100,1500,1300,1400,1000,700,700,1700,1900,2100,1600,1300,1100,600,700,2400,2100,1900,1600,1200,1000];
+const d3 = [800,700,1000,1300,900,400,500,1100,1200,1500,1100,900,1000,800,500,500,1200,1400,1500,1200,900,800,400,500,1700,1500,1400,1100,900,700];
+
+new Chart(document.getElementById('trendChart'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [
+      { label: '클로브AI', data: d1, backgroundColor: '#08B1A9', borderRadius: 2, barPercentage: 0.7 },
+      { label: '클로브금융', data: d2, backgroundColor: '#378ADD', borderRadius: 2, barPercentage: 0.7 },
+      { label: '클로브커넥트', data: d3, backgroundColor: '#7F77DD', borderRadius: 2, barPercentage: 0.7 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { stacked: true, grid: { display: false }, ticks: { font: { size: 10 }, maxTicksLimit: 10, color: '#9A9994' } },
+      y: { stacked: true, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 10 }, color: '#9A9994', callback: v => Math.round(v/1000) + 'k' } }
+    }
+  }
+});
+
+// CTR MONITORING
+const ctrData = [
+  { name: '가입 후 3일 온보딩', sku: 'ai', type: 'condition', sends: 1240, ctr: 4.2, status: 'on' },
+  { name: '미로그인 리마인더', sku: 'ai', type: 'condition', sends: 341, ctr: 7.6, status: 'on' },
+  { name: '부가세 신고 D-7 리마인더', sku: 'ai', type: 'time', sends: 48200, ctr: 27.4, status: 'on' },
+  { name: '팩토링 만기 안내', sku: 'fin', type: 'time', sends: 312, ctr: 12.0, status: 'on' },
+  { name: '세무대리인 월간 리포트', sku: 'con', type: 'time', sends: 2180, ctr: 9.1, status: 'on' },
+  { name: '첫 거래 등록 축하', sku: 'ai', type: 'condition', sends: 28, ctr: 18.5, status: 'on' },
+  { name: '플랜 업그레이드 유도', sku: 'fin', type: 'condition', sends: 0, ctr: 0, status: 'on' },
+  { name: '세무대리인 연결 안내', sku: 'con', type: 'condition', sends: 14, ctr: 8.2, status: 'on' },
+];
+
+const skuTagMap = {
+  ai: `<span class="tag tag-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" style="width:12px;height:12px" alt="">클로브AI</span>`,
+  fin: `<span class="tag tag-fin"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" style="width:12px;height:12px" alt="">클로브금융</span>`,
+  con: `<span class="tag tag-con"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" style="width:12px;height:12px" alt="">클로브커넥트</span>`,
+};
+
+let pendingOffIdx = null;
+
+function renderCtrTable() {
+  const threshold = parseFloat(document.getElementById('ctrThreshold').value) || 10;
+  const failed = ctrData.filter(d => d.ctr < threshold && d.sends > 0);
+  const body = document.getElementById('ctrTableBody');
+  if (!body) return;
+
+  if (failed.length === 0) {
+    body.innerHTML = `<div style="padding:24px;text-align:center;font-size:13px;color:var(--text-3)">CTR ${threshold}% 미달 자동화가 없습니다.</div>`;
+    return;
+  }
+
+  body.innerHTML = failed.map((d, i) => {
+    const diff = (d.ctr - threshold).toFixed(1);
+    const diffColor = 'var(--red)';
+    const isOff = d.status === 'off';
+    return `
+    <div style="display:grid;grid-template-columns:1fr 80px 80px 80px 80px 110px;gap:0;padding:13px 20px;border-bottom:0.5px solid var(--border);align-items:center;${isOff?'opacity:.5':''}">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:var(--text)">${d.name}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:2px">${d.type==='time'?'시간 기반':'조건 기반'}</div>
+      </div>
+      <div style="text-align:center">${skuTagMap[d.sku]}</div>
+      <div style="text-align:right;font-size:13px;color:var(--text-2)">${d.sends.toLocaleString()}</div>
+      <div style="text-align:right;font-size:13px;font-weight:500;color:${diffColor}">${d.ctr}%</div>
+      <div style="text-align:right;font-size:13px;color:${diffColor}">${diff}%p</div>
+      <div style="text-align:center">
+        ${isOff
+          ? `<span style="font-size:12px;color:var(--text-3);font-weight:500">OFF 완료</span>`
+          : `<button class="btn btn-sm" style="background:var(--red);color:#fff;border-color:var(--red);font-size:12px" onclick="openOffModal(${ctrData.indexOf(d)},'${d.name}')">OFF 요청</button>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+
+  // update badge
+  const badge = document.querySelector('.badge-red[style*="font-size:10px"]');
+  if (badge) badge.textContent = failed.length;
+}
+
+function openOffModal(idx, name) {
+  pendingOffIdx = idx;
+  document.getElementById('offModalName').textContent = name;
+  document.getElementById('offModal').style.display = 'flex';
+}
+
+function closeOffModal() {
+  document.getElementById('offModal').style.display = 'none';
+  pendingOffIdx = null;
+}
+
+function confirmOff() {
+  if (pendingOffIdx !== null) {
+    ctrData[pendingOffIdx].status = 'off';
+    renderCtrTable();
+  }
+  closeOffModal();
+  alert('OFF 요청이 완료되었습니다.\n자동화 탭에서 상태를 확인하세요.');
+}
+
+// init on page load
+setTimeout(renderCtrTable, 100);
+
+// TIMETABLE
+const ttSchedules = [
+  {day:0,hour:10,sku:'ai',type:'done',name:'가입 후 3일 온보딩',count:'1,240건',trigger:'자동화'},
+  {day:1,hour:9,sku:'fin',type:'done',name:'팩토링 만기 안내',count:'312건',trigger:'자동화'},
+  {day:1,hour:14,sku:'ai',type:'done',name:'4월 부가세 신고 안내',count:'48,200건',trigger:'수동'},
+  {day:2,hour:9,sku:'ai',type:'done',name:'부가세 D-7 리마인더',count:'21,300건',trigger:'자동화'},
+  {day:2,hour:14,sku:'con',type:'done',name:'세무대리인 리포트',count:'2,180건',trigger:'자동화'},
+  {day:3,hour:10,sku:'ai',type:'plan',name:'온보딩 Day 3',count:'예정 ~1,200건',trigger:'자동화'},
+  {day:3,hour:15,sku:'fin',type:'plan',name:'팩토링 만기 안내',count:'예정 ~300건',trigger:'자동화'},
+  {day:4,hour:11,sku:'con',type:'plan',name:'세무대리인 월간 리포트',count:'예정 ~2,000건',trigger:'자동화'},
+  {day:4,hour:14,sku:'ai',type:'plan',name:'5월 업데이트 예고',count:'예정 ~55,000건',trigger:'수동'},
+];
+const ttSkuLabel = {ai:'클로브AI',fin:'클로브금융',con:'클로브커넥트'};
+const ttSkuTipCls = {ai:'tt-tip-ai',fin:'tt-tip-fin',con:'tt-tip-con'};
+let ttFilters = {ai:true,fin:true,con:true};
+
+function ttGetHours(){
+  const s=new Set(); ttSchedules.forEach(x=>s.add(x.hour)); return Array.from(s).sort((a,b)=>a-b);
+}
+function ttRender(){
+  const hours=ttGetHours();
+  const tbody=document.getElementById('ttBody');
+  if(!tbody)return;
+  tbody.innerHTML='';
+  hours.forEach(h=>{
+    const tr=document.createElement('tr');
+    const td0=document.createElement('td');
+    td0.className='tt-time-label';
+    td0.textContent=String(h).padStart(2,'0')+':00';
+    tr.appendChild(td0);
+    for(let d=0;d<7;d++){
+      const td=document.createElement('td');
+      if(d===2)td.className='tt-today-col';
+      const items=ttSchedules.filter(s=>s.day===d&&s.hour===h&&ttFilters[s.sku]);
+      if(items.length){
+        const wrap=document.createElement('div');
+        wrap.className='tt-marker-wrap';
+        items.forEach(s=>{
+          const m=document.createElement('div');
+          m.className=`tt-marker ${s.type} sku-${s.sku}`;
+          m.addEventListener('mouseenter',e=>ttShowTip(e,s));
+          m.addEventListener('mouseleave',ttHideTip);
+          wrap.appendChild(m);
+        });
+        td.appendChild(wrap);
+      }
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  });
+}
+function ttShowTip(e,s){
+  let tt=document.getElementById('ttTooltip');
+  if(!tt){tt=document.createElement('div');tt.id='ttTooltip';tt.className='tt-tooltip';document.body.appendChild(tt);}
+  tt.innerHTML=`<span class="tt-tip-sku ${ttSkuTipCls[s.sku]}">${ttSkuLabel[s.sku]}</span><br><strong style="font-size:12px">${s.name}</strong><br><span style="color:#aaa">${s.count} · ${s.trigger} · ${s.type==='done'?'완료':'예정'}</span>`;
+  tt.classList.add('show');
+  tt.style.left=(e.clientX+14)+'px';
+  tt.style.top=(e.clientY-12)+'px';
+}
+function ttHideTip(){const tt=document.getElementById('ttTooltip');if(tt)tt.classList.remove('show');}
+document.addEventListener('mousemove',e=>{
+  const tt=document.getElementById('ttTooltip');
+  if(tt&&tt.classList.contains('show')){tt.style.left=(e.clientX+14)+'px';tt.style.top=(e.clientY-12)+'px';}
+});
+function ttToggle(sku,el){
+  ttFilters[sku]=!ttFilters[sku];
+  const cls='on-'+sku;
+  el.classList.toggle(cls);
+  ttRender();
+}
+ttRender();
+
+// SEND PAGE
+const skuConfig = {
+  ai:  { label: '클로브AI',    logo: 'https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png',      cls: 'sel-ai' },
+  fin: { label: '클로브금융',   logo: 'https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png', cls: 'sel-fin' },
+  con: { label: '클로브커넥트', logo: 'https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png',  cls: 'sel-con' }
+};
+let sendSku = 'ai';
+
+document.querySelectorAll('#sendSkuRow .sku-sel').forEach((el, i) => {
+  const keys = ['ai','fin','con'];
+  el.addEventListener('click', function() {
+    sendSku = keys[i];
+    document.querySelectorAll('#sendSkuRow .sku-sel').forEach(s => s.className = 'sku-sel');
+    this.classList.add(skuConfig[sendSku].cls);
+    document.getElementById('sendPreviewLogoImg').src = skuConfig[sendSku].logo;
+    document.getElementById('sendPreviewLogoText').textContent = skuConfig[sendSku].label;
+    updateSendPreview();
+  });
+});
+
+function updateSendPreview() {
+  const subj = document.getElementById('sendSubject').value;
+  document.getElementById('sendPreviewTitle').textContent = subj || '제목을 입력하세요';
+}
+
+function selectSendTpl(el, name, cat, sku) {
+  document.querySelectorAll('#sendTplList .tpl-item').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// TEMPLATE CREATE
+let createSku = 'ai';
+let ctaCount = 1;
+
+function toSlug(str) {
+  const map = {'부가세':'vat','신고':'notice','안내':'guide','출시':'launch','기능':'feature','마케팅':'mkt','온보딩':'onboarding','월간':'monthly','뉴스레터':'newsletter','리마인더':'reminder','전환':'conversion','법인':'corp','세무':'tax','초대':'invitation','팩토링':'factoring','만기':'expiry','신기능':'new-feature','소개':'intro','리포트':'report'};
+  let s = str.trim().toLowerCase();
+  for(const [k,v] of Object.entries(map)) s = s.replace(new RegExp(k,'g'), v+'-');
+  s = s.replace(/[^a-z0-9\-]/g,'').replace(/-+/g,'-').replace(/^-|-$/g,'');
+  return s || 'template';
+}
+
+function updateCreate() {
+  const name = document.getElementById('createName').value;
+  const slug = toSlug(name);
+  const camp = skuConfig[createSku].slug + '_' + slug;
+  document.getElementById('createSlug').textContent = 'utm_campaign: ' + camp;
+  document.getElementById('utmCampaignPreview').innerHTML = camp + ' <span class="auto-tag">자동</span>';
+
+  const blocks = document.querySelectorAll('#createCtaBlocks .cta-block');
+  const contentParts = [];
+  blocks.forEach((b, i) => {
+    const val = camp + '-cta' + (i+1);
+    const el = b.querySelector('.utm-auto-box');
+    if(el) el.textContent = 'utm_content: ' + val;
+    contentParts.push('cta' + (i+1) + ': ' + val);
+  });
+  document.getElementById('utmContentPreview').innerHTML = contentParts.join('<br>') + ' <span class="auto-tag">자동</span>';
+
+  const subj = document.getElementById('createSubject').value;
+  document.getElementById('createPreviewTitle').textContent = subj || '제목을 입력하세요';
+  const body = document.getElementById('createBody').value;
+  document.getElementById('createPreviewBody').textContent = body || '본문을 입력하세요';
+
+  const ctasEl = document.getElementById('createPreviewCtas');
+  ctasEl.innerHTML = '';
+  blocks.forEach(b => {
+    const txt = b.querySelectorAll('input')[0].value;
+    if(txt) { const a = document.createElement('a'); a.className = 'ep-cta'; a.textContent = txt; a.href = '#'; ctasEl.appendChild(a); }
+  });
+}
+
+function setCreateSku(s, el) {
+  createSku = s;
+  document.querySelectorAll('.create-left .sku-sel').forEach(x => x.className = 'sku-sel');
+  el.classList.add(skuConfig[s].cls);
+  document.getElementById('createPreviewLogoImg').src = skuConfig[s].logo;
+  document.getElementById('createPreviewLogoText').textContent = skuConfig[s].label;
+  updateCreate();
+}
+
+// Extend skuConfig with slug
+skuConfig.ai.slug = 'clobe-ai';
+skuConfig.fin.slug = 'clobe-finance';
+skuConfig.con.slug = 'clobe-connect';
+
+function setCat(el) {
+  el.closest('.cat-row').querySelectorAll('.cat-btn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+}
+
+function addCtaBlock() {
+  ctaCount++;
+  const div = document.createElement('div');
+  div.className = 'cta-block';
+  div.innerHTML = `
+    <div class="cta-header">
+      <span class="cta-label">버튼 ${ctaCount}</span>
+      <button class="cta-remove" onclick="removeCtaBlock(this)">삭제</button>
+    </div>
+    <div class="cta-grid">
+      <div><div class="fl">버튼 텍스트</div><input class="fi" placeholder="예: 자세히 보기" oninput="updateCreate()"></div>
+      <div><div class="fl">랜딩 URL</div><input class="fi" placeholder="https://clobe.ai/..." oninput="updateCreate()"></div>
+    </div>
+    <div class="utm-auto-box">utm_content: —</div>`;
+  document.getElementById('createCtaBlocks').appendChild(div);
+  updateCreate();
+}
+
+function removeCtaBlock(btn) {
+  btn.closest('.cta-block').remove();
+  document.querySelectorAll('#createCtaBlocks .cta-block').forEach((b, i) => {
+    b.querySelector('.cta-label').textContent = '버튼 ' + (i+1);
+  });
+  ctaCount = document.querySelectorAll('#createCtaBlocks .cta-block').length;
+  updateCreate();
+}
+
+function toggleConsent(btn) {
+  btn.classList.toggle('on');
+  btn.classList.toggle('off');
+  const show = btn.classList.contains('on');
+  document.getElementById('createPreviewConsent').style.display = show ? 'block' : 'none';
+}
+
+function showCreateForm() {
+  document.getElementById('tplListView').style.display = 'none';
+  document.getElementById('tplCreateView').style.display = 'block';
+  document.getElementById('tplPageTitle').textContent = '새 템플릿 만들기';
+  document.getElementById('btnBackToList').style.display = '';
+  document.getElementById('btnNewTpl').style.display = 'none';
+}
+
+function showListView() {
+  document.getElementById('tplListView').style.display = 'block';
+  document.getElementById('tplCreateView').style.display = 'none';
+  document.getElementById('tplPageTitle').textContent = '템플릿 관리';
+  document.getElementById('btnBackToList').style.display = 'none';
+  document.getElementById('btnNewTpl').style.display = '';
+}
+
+// DASHBOARD CHANNEL FILTER
+const dashData = {
+  all: {
+    sends: '284,120', sendsSub: '↑ 12.4% vs 지난달', sendSubClass: 'up',
+    open: '31.2%', openSub: '↑ 2.1%p vs 지난달', openSubClass: 'up',
+    openLabel: '평균 오픈율',
+    ctr: '8.7%', ctrSub: '↓ 0.4%p vs 지난달', ctrSubClass: 'down',
+    openRateTitle: '제품별 오픈율',
+    openRates: [
+      { tag: 'ai', pct: 78, color: '#08B1A9' },
+      { tag: 'fin', pct: 44, color: '#378ADD' },
+      { tag: 'con', pct: 34, color: '#7F77DD' }
+    ],
+    campaigns: [
+      { name: '4월 부가세 안내', ch: 'email', sku: 'ai', open: '82.1%', openCls: 'up', status: '진행중', dot: 'live' },
+      { name: '부가세 D-7 알림', ch: 'alim', sku: 'ai', open: '91.4%', openCls: 'up', status: '진행중', dot: 'live' },
+      { name: '신기능 소개', ch: 'email', sku: 'con', open: '34.5%', openCls: '', status: '진행중', dot: 'live' },
+      { name: '무료 플랜 전환', ch: 'email', sku: 'ai', open: '18.2%', openCls: 'down', status: '종료', dot: 'end' },
+      { name: '팩토링 만기 안내', ch: 'alim', sku: 'fin', open: '94.1%', openCls: 'up', status: '진행중', dot: 'live' },
+    ]
+  },
+  email: {
+    sends: '221,720', sendsSub: '↑ 9.8% vs 지난달', sendSubClass: 'up',
+    open: '31.2%', openSub: '↑ 2.1%p vs 지난달', openSubClass: 'up',
+    openLabel: '평균 오픈율',
+    ctr: '8.7%', ctrSub: '↓ 0.4%p vs 지난달', ctrSubClass: 'down',
+    openRateTitle: '제품별 이메일 오픈율',
+    openRates: [
+      { tag: 'ai', pct: 31, color: '#08B1A9' },
+      { tag: 'fin', pct: 44, color: '#378ADD' },
+      { tag: 'con', pct: 34, color: '#7F77DD' }
+    ],
+    campaigns: [
+      { name: '4월 부가세 안내', ch: 'email', sku: 'ai', open: '82.1%', openCls: 'up', status: '진행중', dot: 'live' },
+      { name: '신기능 소개', ch: 'email', sku: 'con', open: '34.5%', openCls: '', status: '진행중', dot: 'live' },
+      { name: '무료 플랜 전환', ch: 'email', sku: 'ai', open: '18.2%', openCls: 'down', status: '종료', dot: 'end' },
+      { name: '법인 세무 안내', ch: 'email', sku: 'fin', open: '44.1%', openCls: '', status: '종료', dot: 'end' },
+    ]
+  },
+  alim: {
+    sends: '62,400', sendsSub: '↑ 18.2% vs 지난달', sendSubClass: 'up',
+    open: '88.4%', openSub: '↑ 1.3%p vs 지난달', openSubClass: 'up',
+    openLabel: '평균 수신율',
+    ctr: '23.1%', ctrSub: '↑ 2.8%p vs 지난달', ctrSubClass: 'up',
+    openRateTitle: '제품별 알림톡 수신율',
+    openRates: [
+      { tag: 'ai', pct: 91, color: '#08B1A9' },
+      { tag: 'fin', pct: 94, color: '#378ADD' },
+      { tag: 'con', pct: 87, color: '#7F77DD' }
+    ],
+    campaigns: [
+      { name: '부가세 D-7 알림', ch: 'alim', sku: 'ai', open: '91.4%', openCls: 'up', status: '진행중', dot: 'live' },
+      { name: '팩토링 만기 안내', ch: 'alim', sku: 'fin', open: '94.1%', openCls: 'up', status: '진행중', dot: 'live' },
+      { name: '가입 온보딩', ch: 'alim', sku: 'ai', open: '84.2%', openCls: '', status: '진행중', dot: 'live' },
+      { name: '첫 거래 축하', ch: 'alim', sku: 'ai', open: '89.3%', openCls: '', status: '종료', dot: 'end' },
+    ]
+  }
+};
+
+const skuImgMap = {
+  ai: 'https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png',
+  fin: 'https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png',
+  con: 'https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png'
+};
+const skuLabelMap = { ai: '클로브AI', fin: '클로브금융', con: '클로브커넥트' };
+const skuTagCls2 = { ai: 'tag-ai', fin: 'tag-fin', con: 'tag-con' };
+
+function setDashChannel(ch) {
+  const d = dashData[ch];
+  ['chAll','chEmail','chAlim'].forEach(id => document.getElementById(id).classList.remove('active-ch'));
+  document.getElementById(ch === 'all' ? 'chAll' : ch === 'email' ? 'chEmail' : 'chAlim').classList.add('active-ch');
+
+  document.getElementById('metricSends').textContent = d.sends;
+  document.getElementById('metricSendsSub').textContent = d.sendsSub;
+  document.getElementById('metricSendsSub').className = 'metric-sub ' + d.sendSubClass;
+  document.getElementById('metricOpenLabel').textContent = d.openLabel;
+  document.getElementById('metricOpen').textContent = d.open;
+  document.getElementById('metricOpenSub').textContent = d.openSub;
+  document.getElementById('metricOpenSub').className = 'metric-sub ' + d.openSubClass;
+  document.getElementById('metricCtr').textContent = d.ctr;
+  document.getElementById('metricCtrSub').textContent = d.ctrSub;
+  document.getElementById('metricCtrSub').className = 'metric-sub ' + d.ctrSubClass;
+
+  const badge = document.getElementById('dashChannelBadge');
+  const badgeInner = document.getElementById('dashChannelBadgeInner');
+  const note = document.getElementById('dashChannelNote');
+  if (ch === 'all') {
+    badge.style.display = 'none';
+  } else {
+    badge.style.display = 'block';
+    if (ch === 'email') {
+      badgeInner.textContent = '이메일';
+      badgeInner.style.cssText = 'font-size:12px;padding:4px 12px;border-radius:20px;font-weight:500;background:#E6F1FB;color:#185FA5';
+      note.textContent = '오픈율 기준: 이메일 업계 평균 25~35%';
+    } else {
+      badgeInner.textContent = '알림톡';
+      badgeInner.style.cssText = 'font-size:12px;padding:4px 12px;border-radius:20px;font-weight:500;background:#E1F5EE;color:#0F6E56';
+      note.textContent = '수신율 기준: 알림톡 업계 평균 85~95% · CTR 기준: 20% 이상 양호';
+    }
+  }
+
+  document.getElementById('openRateTitle').textContent = d.openRateTitle;
+  document.getElementById('openRateBars').innerHTML = d.openRates.map(r => `
+    <div class="row-bar">
+      <div class="tag ${skuTagCls2[r.tag]}"><img src="${skuImgMap[r.tag]}" style="width:12px;height:12px" alt="">${skuLabelMap[r.tag]}</div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${r.pct}%;background:${r.color}"></div></div>
+      <div class="rate-label">${r.pct}%</div>
+    </div>
+  `).join('');
+
+  const chBadge = ch === 'email'
+    ? `<span style="font-size:10px;background:#E6F1FB;color:#185FA5;padding:1px 7px;border-radius:20px;font-weight:500">이메일</span>`
+    : ch === 'alim'
+    ? `<span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:1px 7px;border-radius:20px;font-weight:500">알림톡</span>`
+    : '';
+
+  document.getElementById('dashCampaignBody').innerHTML = d.campaigns.map(c => {
+    const chTag = c.ch === 'email'
+      ? `<span style="font-size:10px;background:#E6F1FB;color:#185FA5;padding:1px 7px;border-radius:20px;font-weight:500">이메일</span>`
+      : `<span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:1px 7px;border-radius:20px;font-weight:500">알림톡</span>`;
+    return `
+      <tr>
+        <td>${c.name}</td>
+        <td>${chTag}</td>
+        <td><span class="tag ${skuTagCls2[c.sku]}"><img src="${skuImgMap[c.sku]}" style="width:12px;height:12px" alt="">${skuLabelMap[c.sku]}</span></td>
+        <td class="${c.openCls}">${c.open}</td>
+        <td><span class="status"><span class="dot dot-${c.dot}"></span>${c.status}</span></td>
+      </tr>`;
+  }).join('');
+}
+
+setTimeout(() => setDashChannel('all'), 200);
+
+const nhnAutoMap = {
+  vat_notice_d7: { trigger: '매월 18일 09:00', channels: ['email','alimtalk'], templateCode: 'AT_VAT_001', sku: 'ai' },
+  connect_monthly_report: { trigger: '매월 1일 08:00', channels: ['email'], templateCode: null, sku: 'con' },
+  fin_expiry_d14: { trigger: '만기 D-14', channels: ['alimtalk'], templateCode: 'AT_FIN_002', sku: 'fin' },
+  onboarding_d3: { trigger: '회원가입 후 72시간', channels: ['email','alimtalk'], templateCode: 'AT_OB_003', sku: 'ai' },
+  inactive_14d: { trigger: '14일 연속 미접속', channels: ['email'], templateCode: null, sku: 'ai' },
+  first_transaction: { trigger: '최초 거래 데이터 입력', channels: ['alimtalk'], templateCode: 'AT_FIRST_005', sku: 'ai' },
+};
+
+function openAutoAddPanel() {
+  document.querySelectorAll('.auto-row-new').forEach(r => r.classList.remove('selected'));
+  document.getElementById('panelTitle').textContent = '+ 새 자동화 추가';
+  document.getElementById('panelReadonlySection').style.display = 'none';
+  document.getElementById('panelAddSection').style.display = 'block';
+  document.getElementById('panelNhnSelect').value = '';
+  document.getElementById('panelNhnPreview').style.display = 'none';
+  document.getElementById('panelDisplayName').value = '';
+  document.getElementById('panelAlimCode').value = '';
+  document.getElementById('panelSkuBadge').innerHTML = '';
+  document.getElementById('panelSkuBadge').style.display = 'none';
+  document.getElementById('panelSkuSelectRow').style.display = 'block';
+  document.getElementById('panelEmailTplField').style.display = 'none';
+  document.getElementById('panelAlimTplField').style.display = 'none';
+  document.getElementById('panelAlimCodeNote').textContent = '카카오에서 승인된 templateCode를 입력하세요';
+  document.getElementById('panelSaveBtn').textContent = '추가';
+  document.getElementById('autoPanel').style.display = 'block';
+}
+
+function onNhnSelect(val) {
+  const preview = document.getElementById('panelNhnPreview');
+  if (!val) { preview.style.display = 'none'; return; }
+  const d = nhnAutoMap[val];
+  if (!d) return;
+  preview.style.display = 'block';
+  document.getElementById('addNhnName').textContent = val;
+  document.getElementById('addNhnTrigger').textContent = d.trigger;
+  const chText = d.channels.map(c => c === 'email' ? '이메일' : '알림톡').join(' + ');
+  document.getElementById('addNhnChannel').textContent = chText;
+  document.getElementById('panelEmailTplField').style.display = d.channels.includes('email') ? 'block' : 'none';
+  document.getElementById('panelAlimTplField').style.display = d.channels.includes('alimtalk') ? 'block' : 'none';
+  document.getElementById('panelAlimCode').value = d.templateCode || '';
+}
+
+function setPanelSku(s, el) {
+  document.querySelectorAll('#panelSkuSelectRow .sku-sel').forEach(x => x.className = 'sku-sel');
+  el.classList.add(skuConfig[s].cls);
+}
+
+function openAutoPanel(id) {
+  const d = autoData[id];
+  if (!d) return;
+  document.querySelectorAll('.auto-row-new').forEach(r => r.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+
+  document.getElementById('panelTitle').textContent = d.title;
+  document.getElementById('panelReadonlySection').style.display = 'block';
+  document.getElementById('panelAddSection').style.display = 'none';
+  document.getElementById('panelNhnName').textContent = d.nhnName;
+  document.getElementById('panelTrigger').textContent = d.trigger;
+  document.getElementById('panelDisplayName').value = d.displayName;
+  document.getElementById('panelAlimCode').value = d.templateCode || '';
+  document.getElementById('panelSkuBadge').innerHTML = skuTagHTML[d.sku];
+  document.getElementById('panelSkuBadge').style.display = 'block';
+  document.getElementById('panelSkuSelectRow').style.display = 'none';
+  document.getElementById('panelAlimCodeNote').textContent = 'NHN Cloud에서 불러온 값 · 필요 시 수정 가능';
+  document.getElementById('panelSaveBtn').textContent = '저장';
+
+  const chBadges = d.channels.map(c =>
+    c === 'email'
+      ? `<span style="font-size:10px;background:#E6F1FB;color:#185FA5;padding:2px 7px;border-radius:20px;font-weight:500;margin-right:4px">이메일</span>`
+      : `<span style="font-size:10px;background:#E1F5EE;color:#0F6E56;padding:2px 7px;border-radius:20px;font-weight:500;margin-right:4px">알림톡</span>`
+  ).join('');
+  document.getElementById('panelChannelBadges').innerHTML = chBadges;
+  document.getElementById('panelEmailTplField').style.display = d.channels.includes('email') ? 'block' : 'none';
+  document.getElementById('panelAlimTplField').style.display = d.channels.includes('alimtalk') ? 'block' : 'none';
+  document.getElementById('panelTemplateCode').textContent = d.templateCode || '없음 (이메일 전용)';
+
+  document.getElementById('autoPanel').style.display = 'block';
+}
+
+function closeAutoPanel() {
+  document.getElementById('autoPanel').style.display = 'none';
+  document.querySelectorAll('.auto-row-new').forEach(r => r.classList.remove('selected'));
+}
+
+const autoData = {
+  time_vat: {
+    title: '부가세 신고 D-7 리마인더',
+    nhnName: 'vat_notice_d7',
+    trigger: '매월 18일 09:00',
+    channels: ['email', 'alimtalk'],
+    templateCode: 'AT_VAT_001',
+    sku: 'ai',
+    displayName: '부가세 신고 D-7 리마인더'
+  },
+  time_report: {
+    title: '세무대리인 월간 리포트',
+    nhnName: 'connect_monthly_report',
+    trigger: '매월 1일 08:00',
+    channels: ['email'],
+    templateCode: null,
+    sku: 'con',
+    displayName: '세무대리인 월간 리포트'
+  },
+  time_factoring: {
+    title: '팩토링 만기 안내',
+    nhnName: 'fin_expiry_d14',
+    trigger: '만기 D-14',
+    channels: ['alimtalk'],
+    templateCode: 'AT_FIN_002',
+    sku: 'fin',
+    displayName: '팩토링 만기 안내'
+  },
+  cond_onboarding: {
+    title: '가입 후 3일 온보딩',
+    nhnName: 'onboarding_d3',
+    trigger: '회원가입 후 72시간',
+    channels: ['email', 'alimtalk'],
+    templateCode: 'AT_OB_003',
+    sku: 'ai',
+    displayName: '가입 후 3일 온보딩'
+  },
+  cond_inactive: {
+    title: '미로그인 리마인더',
+    nhnName: 'inactive_14d',
+    trigger: '14일 연속 미접속',
+    channels: ['email'],
+    templateCode: null,
+    sku: 'ai',
+    displayName: '미로그인 리마인더'
+  },
+  cond_first_tx: {
+    title: '첫 거래 등록 축하',
+    nhnName: 'first_transaction',
+    trigger: '최초 거래 데이터 입력',
+    channels: ['alimtalk'],
+    templateCode: 'AT_FIRST_005',
+    sku: 'ai',
+    displayName: '첫 거래 등록 축하'
+  },
+  cond_plan: {
+    title: '플랜 업그레이드 유도',
+    nhnName: 'plan_expire_d3',
+    trigger: '무료 플랜 30일 만료 D-3',
+    channels: ['email'],
+    templateCode: null,
+    sku: 'fin',
+    displayName: '플랜 업그레이드 유도'
+  }
+};
+
+// CHANNEL SWITCH (SEND PAGE)
+
+const skuTagHTML = {
+  ai: `<span class="tag tag-ai"><img src="https://i.ibb.co/xSWpynV2/clobe-ai-symbol-logo-black.png" style="width:12px;height:12px" alt="">클로브AI</span>`,
+  fin: `<span class="tag tag-fin"><img src="https://i.ibb.co/vvXB82Fs/clobe-finance-symbol-logo-black.png" style="width:12px;height:12px" alt="">클로브금융</span>`,
+  con: `<span class="tag tag-con"><img src="https://i.ibb.co/8hCYcqm/clobe-connect-symbol-logo-black.png" style="width:12px;height:12px" alt="">클로브커넥트</span>`
+};
+
+// CHANNEL SWITCH (SEND PAGE)
+function setSendChannel(ch) {
+  const emailView = document.getElementById('sendEmailView');
+  const alimView = document.getElementById('sendAlimView');
+  const btnEmail = document.getElementById('sendChannelEmail');
+  const btnAlim = document.getElementById('sendChannelAlim');
+  if (ch === 'email') {
+    emailView.style.display = '';
+    alimView.style.display = 'none';
+    btnEmail.style.background = 'var(--teal)';
+    btnEmail.style.color = '#fff';
+    btnAlim.style.background = 'var(--surface)';
+    btnAlim.style.color = 'var(--text-2)';
+  } else {
+    emailView.style.display = 'none';
+    alimView.style.display = '';
+    btnAlim.style.background = 'var(--teal)';
+    btnAlim.style.color = '#fff';
+    btnEmail.style.background = 'var(--surface)';
+    btnEmail.style.color = 'var(--text-2)';
+  }
+}
+
+// TEMPLATE TAB SWITCH
+function setTplTab(tab) {
+  const emailList = document.getElementById('tplEmailList');
+  const alimList = document.getElementById('tplAlimList');
+  const tabEmail = document.getElementById('tplTabEmail');
+  const tabAlim = document.getElementById('tplTabAlim');
+  if (tab === 'email') {
+    emailList.style.display = '';
+    alimList.style.display = 'none';
+    tabEmail.style.borderBottomColor = 'var(--teal)';
+    tabEmail.style.color = 'var(--text)';
+    tabEmail.style.fontWeight = '500';
+    tabAlim.style.borderBottomColor = 'transparent';
+    tabAlim.style.color = 'var(--text-2)';
+    tabAlim.style.fontWeight = '400';
+    document.getElementById('btnNewTpl').textContent = '+ 새 템플릿';
+    document.getElementById('btnNewTpl').onclick = showCreateForm;
+  } else {
+    emailList.style.display = 'none';
+    alimList.style.display = '';
+    tabAlim.style.borderBottomColor = 'var(--teal)';
+    tabAlim.style.color = 'var(--text)';
+    tabAlim.style.fontWeight = '500';
+    tabEmail.style.borderBottomColor = 'transparent';
+    tabEmail.style.color = 'var(--text-2)';
+    tabEmail.style.fontWeight = '400';
+    document.getElementById('btnNewTpl').textContent = '+ 새 알림톡 템플릿';
+    document.getElementById('btnNewTpl').onclick = showAlimCreateForm;
+  }
+}
+
+function showAlimCreateForm() {
+  document.getElementById('tplListView').style.display = 'none';
+  document.getElementById('tplCreateView').style.display = 'none';
+  document.getElementById('tplAlimCreateView').style.display = 'block';
+  document.getElementById('tplPageTitle').textContent = '새 알림톡 템플릿';
+  document.getElementById('btnBackToList').style.display = '';
+  document.getElementById('btnBackToList').onclick = () => {
+    document.getElementById('tplAlimCreateView').style.display = 'none';
+    document.getElementById('tplListView').style.display = 'block';
+    document.getElementById('tplPageTitle').textContent = '템플릿 관리';
+    document.getElementById('btnBackToList').style.display = 'none';
+    setTplTab('alim');
+  };
+  document.getElementById('btnNewTpl').style.display = 'none';
+}
+
+function updateAlimPreview() {
+  const body = document.getElementById('alimBody')?.value || '';
+  const count = document.getElementById('alimCharCount');
+  const preview = document.getElementById('alimPreviewBody');
+  if (count) count.textContent = body.length + ' / 1,000자';
+  if (preview) {
+    preview.textContent = body || '본문을 입력하면 미리보기가 표시됩니다.';
+    preview.style.color = body ? '#1a1a1a' : '#888';
+    preview.style.fontSize = body ? '13px' : '12px';
+  }
+}
+
+// SETTINGS
+let capVal = 3;
+const holidays2026 = [
+  { date: '2026-01-01', name: '신정' },
+  { date: '2026-01-28', name: '설날 연휴' },
+  { date: '2026-01-29', name: '설날' },
+  { date: '2026-01-30', name: '설날 연휴' },
+  { date: '2026-03-01', name: '삼일절' },
+  { date: '2026-05-05', name: '어린이날' },
+  { date: '2026-05-25', name: '부처님오신날' },
+  { date: '2026-06-06', name: '현충일' },
+  { date: '2026-08-15', name: '광복절' },
+  { date: '2026-09-24', name: '추석 연휴' },
+  { date: '2026-09-25', name: '추석' },
+  { date: '2026-09-26', name: '추석 연휴' },
+  { date: '2026-10-03', name: '개천절' },
+  { date: '2026-10-09', name: '한글날' },
+  { date: '2026-12-25', name: '크리스마스' },
+];
+
+function adjCap(delta) {
+  capVal = Math.max(1, Math.min(10, capVal + delta));
+  document.getElementById('capVal').textContent = capVal;
+  updatePolicyPreview();
+}
+
+function updatePolicyPreview() {
+  const weekendOn = document.getElementById('weekendToggle')?.classList.contains('on');
+  const holidayOn = document.getElementById('holidayToggle')?.classList.contains('on');
+  const lines = [
+    `· 유저당 하루 최대 <strong>${capVal}통</strong> 발송`,
+    weekendOn ? '· 토·일 발송 금지 — 초과 시 다음 평일로 지연' : '· 주말 발송 허용',
+    holidayOn ? '· 공휴일 발송 금지 — 초과 시 다음 영업일로 지연' : '· 공휴일 발송 허용',
+  ];
+  const el = document.getElementById('policyPreview');
+  if (el) el.innerHTML = '<strong>현재 적용 정책</strong><br>' + lines.join('<br>');
+}
+
+function renderHolidays() {
+  const list = document.getElementById('holidayList');
+  if (!list) return;
+  list.innerHTML = holidays2026.map((h, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:0.5px solid var(--border);border-radius:var(--radius);background:var(--surface)">
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--text)">${h.name}</div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:1px">${h.date}</div>
+      </div>
+      <button onclick="removeHoliday(${i})" style="border:none;background:none;cursor:pointer;font-size:13px;color:var(--text-3);padding:2px 6px;border-radius:4px;font-family:var(--font)" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text-3)'">✕</button>
+    </div>
+  `).join('');
+  const countEl = document.getElementById('holidayCount');
+  if (countEl) countEl.textContent = holidays2026.length;
+}
+
+function addHoliday() {
+  const date = document.getElementById('newHolidayDate').value;
+  const name = document.getElementById('newHolidayName').value.trim();
+  if (!date || !name) { alert('날짜와 공휴일명을 모두 입력하세요.'); return; }
+  if (holidays2026.find(h => h.date === date)) { alert('이미 등록된 날짜입니다.'); return; }
+  holidays2026.push({ date, name });
+  holidays2026.sort((a, b) => a.date.localeCompare(b.date));
+  document.getElementById('newHolidayDate').value = '';
+  document.getElementById('newHolidayName').value = '';
+  renderHolidays();
+}
+
+function removeHoliday(idx) {
+  holidays2026.splice(idx, 1);
+  renderHolidays();
+}
+
+setTimeout(() => { updatePolicyPreview(); renderHolidays(); }, 150);
+</script>
+</body>
+</html>
