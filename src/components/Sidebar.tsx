@@ -9,10 +9,11 @@ import {
   LayoutDashboard,
   Send,
   Settings,
+  Users,
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { mockCtrWarnings, mockTrackingWarnings, mockDormantTemplates } from "@/lib/mock-data";
+import { mockAlimErrors, mockCtrWarnings, mockTrackingWarnings, mockDormantTemplates } from "@/lib/mock-data";
 
 type Item = {
   href: string;
@@ -33,6 +34,7 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     title: "발송",
     items: [
       { href: "/send", label: "발송하기", icon: Send },
+      { href: "/segments", label: "세그먼트", icon: Users },
       { href: "/history", label: "발송이력", icon: History },
     ],
   },
@@ -53,7 +55,7 @@ function useWarningCount(): number {
   // Keep in sync with warnings page aggregation.
   const ctr = mockCtrWarnings.filter((r) => r.sends > 0 && r.ctr < 10).length;
   const dormant = mockDormantTemplates.filter((t) => t.sends7d / 7 < 3).length;
-  return ctr + mockTrackingWarnings.length + dormant;
+  return ctr + mockTrackingWarnings.length + dormant + mockAlimErrors.length;
 }
 
 export function Sidebar() {

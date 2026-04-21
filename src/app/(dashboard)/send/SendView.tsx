@@ -22,13 +22,14 @@ import {
   isTemplateActive,
   TemplateName,
 } from "@/lib/template-meta";
+import { getSegments, SEGMENT_TYPES, type Segment } from "@/lib/segments";
 import type { AlimTemplate, Template, TemplateStatus } from "@/types/crm";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
 
 type Channel = "email" | "alimtalk";
 type Mode = "free" | "template";
-type RecipientMode = "single" | "bulk";
+type RecipientMode = "single" | "bulk" | "segment";
 type CsvData = { headers: string[]; rows: string[][] };
 
 export function SendView({
@@ -66,6 +67,9 @@ export function SendView({
   const [recipientMode, setRecipientMode] = useState<RecipientMode>("single");
   const [singleAddr, setSingleAddr] = useState("");
   const [csvData, setCsvData] = useState<CsvData | null>(null);
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
+  const [availableSegments, setAvailableSegments] = useState<Segment[]>([]);
+  useEffect(() => setAvailableSegments(getSegments().filter((s) => s.status === "done")), []);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showTest, setShowTest] = useState(false);
 
@@ -132,8 +136,13 @@ export function SendView({
     return [];
   }, [channel, mode, selectedAlim, selectedEmail, subject, body]);
 
+  const selectedSegment = availableSegments.find((s) => s.id === selectedSegmentId) ?? null;
   const recipientCount =
-    recipientMode === "single" ? (singleAddr.trim() ? 1 : 0) : csvData?.rows.length ?? 0;
+    recipientMode === "single"
+      ? singleAddr.trim() ? 1 : 0
+      : recipientMode === "bulk"
+      ? csvData?.rows.length ?? 0
+      : selectedSegment?.userCount ?? 0;
 
   // ---------- Validation ----------
   const canGoToStep2 = campaignName.trim().length > 0 && !!channel;
@@ -164,6 +173,9 @@ export function SendView({
       sku_id: activeLayout?.skuId ?? null,
       sent_at: new Date().toISOString(),
       recipient_count: recipientCount,
+      delivered_count: recipientCount,
+      received_count: recipientCount,
+      bounce: null,
       open_rate: null,
       conversion_rate: null,
       created_by: "앰버",
@@ -246,6 +258,9 @@ export function SendView({
             singleVars={singleVars}
             onSingleVars={setSingleVars}
             recipientCount={recipientCount}
+            segments={availableSegments}
+            selectedSegmentId={selectedSegmentId}
+            onSelectSegment={setSelectedSegmentId}
             onPrev={() => setStep(2)}
             onTest={() => setShowTest(true)}
             onSend={() => setShowConfirm(true)}
@@ -807,6 +822,9 @@ function Step3({
   singleVars,
   onSingleVars,
   recipientCount,
+  segments,
+  selectedSegmentId,
+  onSelectSegment,
   onPrev,
   onTest,
   onSend,
@@ -824,6 +842,9 @@ function Step3({
   singleVars: Record<string, string>;
   onSingleVars: (v: Record<string, string>) => void;
   recipientCount: number;
+  segments: Segment[];
+  selectedSegmentId: string | null;
+  onSelectSegment: (id: string | null) => void;
   onPrev: () => void;
   onTest: () => void;
   onSend: () => void;
@@ -834,6 +855,7 @@ function Step3({
   const addrKey = channel === "email" ? "email" : "phone";
   const addrPlaceholder =
     channel === "email" ? "user@company.com" : "01012345678";
+  const selectedSegment = segments.find((s) => s.id === selectedSegmentId) ?? null;
 
   const downloadSample = () => {
     const headers = [addrKey, ...variables];
@@ -855,7 +877,7 @@ function Step3({
         <div className="mb-4">
           <div className="mb-2 text-[13px] font-semibold text-[#1A1A18]">수신 방식</div>
           <div className="flex overflow-hidden w-max rounded-lg border border-black/15">
-            {(["single", "bulk"] as const).map((m) => (
+            {(["single", "bulk", "segment"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => onRecipientMode(m)}
@@ -865,7 +887,7 @@ function Step3({
                     : "bg-white text-[#5F5E5A]"
                 }`}
               >
-                {m === "single" ? "단건" : "대량 CSV"}
+                {m === "single" ? "단건" : m === "bulk" ? "대량 CSV" : "세그먼트"}
               </button>
             ))}
           </div>
@@ -891,7 +913,7 @@ function Step3({
               </Field>
             ))}
           </>
-        ) : (
+        ) : recipientMode === "bulk" ? (
           <>
             <DropZoneCsv onParsed={onCsvData} />
             <div className="mt-3 flex items-center justify-between">
@@ -914,6 +936,71 @@ function Step3({
                   {csvData.rows.length}개 회사에게 발송 예정
                 </div>
               </>
+            )}
+          </>
+        ) : (
+          /* Segment mode */
+          <>
+            <Field label="세그먼트 선택" hint="완료된 세그먼트만 선택 가능">
+              {segments.length === 0 ? (
+                <div className="rounded-lg bg-[#F7F7F5] px-3 py-4 text-center text-[12px] text-[#9A9994]">
+                  생성된 세그먼트가 없습니다. /segments 에서 먼저 생성하세요.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {segments.map((seg) => {
+                    const on = selectedSegmentId === seg.id;
+                    const typeMeta = SEGMENT_TYPES.find((s) => s.value === seg.type);
+                    return (
+                      <button
+                        key={seg.id}
+                        onClick={() => onSelectSegment(seg.id)}
+                        className="rounded-lg border px-3 py-2.5 text-left transition"
+                        style={
+                          on
+                            ? { border: "2px solid #08B1A9", backgroundColor: "#E1F5EE" }
+                            : { border: "1px solid rgba(0,0,0,0.1)" }
+                        }
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-[13px] font-medium">{seg.label}</div>
+                          <div className="text-[13px] font-semibold text-[#08B1A9]">
+                            {seg.companyCount.toLocaleString()}개사 · {seg.userCount.toLocaleString()}명
+                          </div>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <span
+                            className="rounded-full px-2 py-px text-[10px] font-medium"
+                            style={{ background: "#E6F1FB", color: "#185FA5" }}
+                          >
+                            {typeMeta?.label}
+                          </span>
+                          <span
+                            className="rounded-full px-2 py-px text-[10px] font-medium"
+                            style={
+                              seg.consent === "agreed"
+                                ? { background: "#E1F5EE", color: "#0F6E56" }
+                                : { background: "#F7F7F5", color: "#5F5E5A" }
+                            }
+                          >
+                            수신동의: {seg.consent === "agreed" ? "동의만" : "전체"}
+                          </span>
+                          {seg.referenceMonth && (
+                            <span className="text-[11px] text-[#9A9994]">
+                              {seg.referenceMonth} {typeMeta?.timeLabel} 기준
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </Field>
+            {selectedSegment && (
+              <div className="text-[13px] font-semibold text-[#08B1A9]">
+                {selectedSegment.companyCount.toLocaleString()}개사 · {selectedSegment.userCount.toLocaleString()}명에게 발송 예정
+              </div>
             )}
           </>
         )}

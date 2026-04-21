@@ -345,6 +345,89 @@ export const mockPendingSends: PendingSend[] = ttSchedules
     reason: s.reason!,
   }));
 
+// ---------------- Alimtalk errors ----------------
+
+export type AlimErrorKind = "send_fail" | "receive_fail" | "low_read";
+
+export type AlimError = {
+  id: string;
+  kind: AlimErrorKind;
+  templateName: string;
+  templateCode: string;
+  sku: Sku;
+  sentAt: string;
+  totalCount: number;
+  failCount: number;
+  failRate: number;
+  nhnResultCode?: string;
+  description: string;
+};
+
+export const mockAlimErrors: AlimError[] = [
+  {
+    id: "ae1",
+    kind: "send_fail",
+    templateName: "limit_update",
+    templateCode: "limit_update",
+    sku: "ai",
+    sentAt: "04.12 09:00",
+    totalCount: 420,
+    failCount: 420,
+    failRate: 1.0,
+    nhnResultCode: "4004",
+    description: "템플릿 코드 불일치로 NHN에서 발송 요청이 거부되었습니다.",
+  },
+  {
+    id: "ae2",
+    kind: "send_fail",
+    templateName: "daily_report",
+    templateCode: "daily_report_dev",
+    sku: "ai",
+    sentAt: "04.10 09:00",
+    totalCount: 1,
+    failCount: 1,
+    failRate: 1.0,
+    nhnResultCode: "4000",
+    description: "앱키 인증 실패. NHN 콘솔에서 앱키 상태를 확인하세요.",
+  },
+  {
+    id: "ae3",
+    kind: "receive_fail",
+    templateName: "off-notice-1st",
+    templateCode: "off-notice-1st-t2",
+    sku: "ai",
+    sentAt: "04.11 10:00",
+    totalCount: 880,
+    failCount: 64,
+    failRate: 0.073,
+    description: "수신자 전화번호 오류 또는 카카오 미가입으로 일부 도달 실패.",
+  },
+  {
+    id: "ae4",
+    kind: "receive_fail",
+    templateName: "com_new_thread",
+    templateCode: "com_new_thread",
+    sku: "con",
+    sentAt: "04.13 14:00",
+    totalCount: 310,
+    failCount: 28,
+    failRate: 0.09,
+    description: "채널 차단 수신자 비율이 높습니다. 채널 친구 추가 유도를 검토하세요.",
+  },
+  {
+    id: "ae5",
+    kind: "low_read",
+    templateName: "data_connection_01",
+    templateCode: "data_connection_01",
+    sku: "ai",
+    sentAt: "04.09 11:00",
+    totalCount: 520,
+    failCount: 0,
+    failRate: 0,
+    description: "수신은 정상이지만 열람률이 기준 CTR 대비 50% 미만입니다. 발송 시간대 또는 메시지 내용 검토가 필요합니다.",
+  },
+];
+
 export const mockHolidays2026: Holiday[] = [
   { date: "2026-01-01", name: "신정" },
   { date: "2026-01-28", name: "설날 연휴" },

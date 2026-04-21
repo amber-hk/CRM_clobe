@@ -454,11 +454,11 @@ function CampaignTable({ campaigns }: { campaigns: Campaign[] }) {
     </button>
   );
 
-  const cols = "1fr 110px 90px 80px 80px 80px 90px";
+  const cols = "1fr 60px 70px 70px 80px 65px 65px 70px";
   return (
     <div className="rounded-xl border border-black/10 bg-white p-4">
       <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[#9A9994]">
-        캠페인 오픈율 + 유입률 비교
+        캠페인 성과 비교
       </div>
       <div
         className="grid items-center border-b border-black/10 pb-2.5"
@@ -466,8 +466,9 @@ function CampaignTable({ campaigns }: { campaigns: Campaign[] }) {
       >
         <div>{header("캠페인명", "name")}</div>
         <div className="text-center">{header("채널", "channel", "center")}</div>
-        <div className="text-center">{header("유형", "send_type", "center")}</div>
-        <div className="text-right">{header("발송사", "recipient_count", "right")}</div>
+        <div className="text-right">{header("발송", "recipient_count", "right")}</div>
+        <div className="text-right">{header("수신", "recipient_count", "right")}</div>
+        <div className="text-right">{header("수신성공률", "recipient_count", "right")}</div>
         <div className="text-right">{header("오픈율", "open_rate", "right")}</div>
         <div className="text-right">{header("유입률", "conversion_rate", "right")}</div>
         <div className="text-right">{header("발송일", "sent_at", "right")}</div>
@@ -478,6 +479,8 @@ function CampaignTable({ campaigns }: { campaigns: Campaign[] }) {
         </div>
       ) : (
         sorted.slice(0, 50).map((c) => {
+          const recvRate = c.recipient_count > 0 ? (c.received_count ?? c.recipient_count) / c.recipient_count : 1;
+          const recvCls = recvRate < 0.9 ? "text-[#E24B4A] font-medium" : recvRate < 0.95 ? "text-[#BA7517]" : "";
           const lowConv = c.conversion_rate != null && c.conversion_rate < 0.1;
           return (
             <div
@@ -487,14 +490,13 @@ function CampaignTable({ campaigns }: { campaigns: Campaign[] }) {
             >
               <div className="truncate font-medium">{c.name}</div>
               <div className="flex justify-center"><ChannelBadge ch={c.channel} /></div>
-              <div className="flex justify-center"><SendTypeBadge type={c.send_type} /></div>
-              <div className="text-right">{c.recipient_count.toLocaleString()}</div>
+              <div className="text-right">{(c.recipient_count ?? 0).toLocaleString()}</div>
+              <div className="text-right">{(c.received_count ?? 0).toLocaleString()}</div>
+              <div className={`text-right ${recvCls}`}>
+                {(recvRate * 100).toFixed(1)}%
+              </div>
               <div className="text-right">
-                {c.channel === "alimtalk"
-                  ? "—"
-                  : c.open_rate == null
-                  ? "—"
-                  : `${(c.open_rate * 100).toFixed(1)}%`}
+                {c.channel === "alimtalk" ? "—" : c.open_rate == null ? "—" : `${(c.open_rate * 100).toFixed(1)}%`}
               </div>
               <div className={`text-right ${lowConv ? "font-medium text-[#E24B4A]" : ""}`}>
                 {c.conversion_rate == null ? "—" : `${(c.conversion_rate * 100).toFixed(1)}%`}

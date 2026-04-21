@@ -4,9 +4,12 @@ import { useMemo, useState } from "react";
 import { ChannelBadge, SkuTag } from "@/components/common/Badges";
 import { TemplateName } from "@/lib/template-meta";
 import {
+  mockAlimErrors,
   mockCtrWarnings,
   mockDormantTemplates,
   mockTrackingWarnings,
+  type AlimError,
+  type AlimErrorKind,
 } from "@/lib/mock-data";
 
 export default function WarningsPage() {
@@ -24,8 +27,12 @@ export default function WarningsPage() {
   );
 
   const dormant = mockDormantTemplates.filter((t) => t.sends7d / 7 < 3);
+  const alimErrors = mockAlimErrors;
   const totalWarnings =
-    failing.length + mockTrackingWarnings.length + dormant.length;
+    failing.length +
+    mockTrackingWarnings.length +
+    dormant.length +
+    alimErrors.length;
   const pendingRow = pendingOff !== null ? ctrRows[pendingOff] : null;
 
   return (
@@ -239,6 +246,27 @@ export default function WarningsPage() {
         </div>
       )}
 
+      {/* 알림톡 발송 오류 */}
+      <div className="mt-6 mb-3 flex items-center gap-2">
+        <div className="text-[11px] font-medium uppercase tracking-wider text-[#9A9994]">
+          알림톡 발송 오류
+        </div>
+        <span className="rounded-full bg-[#E24B4A] px-1.5 py-0.5 text-[10px] font-semibold text-white">
+          {alimErrors.length}
+        </span>
+        <span className="text-[11px] text-[#9A9994]">
+          · 발송 실패 / 수신 실패 / 열람률 저하
+        </span>
+      </div>
+      <div className="mb-3 rounded-lg bg-[#F7F7F5] px-3 py-2 text-[11px] text-[#9A9994]">
+        ℹ️ 실제 발송 데이터 연동 전까지 mock 기준으로 표시됩니다.
+      </div>
+      <div className="flex flex-col gap-2.5">
+        {alimErrors.map((err) => (
+          <AlimErrorCard key={err.id} error={err} />
+        ))}
+      </div>
+
       {/* OFF 확인 모달 */}
       {pendingRow && (
         <div
@@ -282,5 +310,67 @@ export default function WarningsPage() {
         </div>
       )}
     </section>
+  );
+}
+
+const ALIM_ERROR_STYLE: Record<
+  AlimErrorKind,
+  { label: string; bg: string; fg: string; cardBorder: string }
+> = {
+  send_fail:    { label: "발송 실패",   bg: "#FCEBEB", fg: "#A32D2D", cardBorder: "#E24B4A" },
+  receive_fail: { label: "수신 실패",   bg: "#FAEEDA", fg: "#854F0B", cardBorder: "#EF9F27" },
+  low_read:     { label: "열람률 저하", bg: "#FEF9C3", fg: "#854F0B", cardBorder: "#FACC15" },
+};
+
+function AlimErrorCard({ error: e }: { error: AlimError }) {
+  const s = ALIM_ERROR_STYLE[e.kind];
+  return (
+    <div
+      className="rounded-xl border bg-white p-4"
+      style={{ borderColor: "rgba(0,0,0,0.1)", borderLeft: `3px solid ${s.cardBorder}` }}
+    >
+      <div className="mb-1.5 flex flex-wrap items-center gap-2">
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          style={{ background: s.bg, color: s.fg }}
+        >
+          {s.label}
+        </span>
+        <div className="text-[13px] font-medium">
+          <TemplateName id={e.templateName} />
+        </div>
+        <SkuTag sku={e.sku} />
+        <span className="font-mono text-[10px] text-[#9A9994]">{e.templateCode}</span>
+      </div>
+
+      <div className="mb-2 text-[12px] leading-relaxed text-[#5F5E5A]">
+        {e.description}
+      </div>
+
+      <div className="mb-2.5 flex flex-wrap items-center gap-3 text-[12px] text-[#5F5E5A]">
+        <span>{e.sentAt} 발송</span>
+        <span>전체 {e.totalCount.toLocaleString()}건</span>
+        {e.failCount > 0 && (
+          <span className={e.failRate > 0.05 ? "font-medium text-[#E24B4A]" : ""}>
+            실패 {e.failCount.toLocaleString()}건 ({(e.failRate * 100).toFixed(1)}%)
+            {e.failRate > 0.05 && " · 임계치 5% 초과"}
+          </span>
+        )}
+        {e.nhnResultCode && (
+          <span className="font-mono text-[11px] text-[#9A9994]">
+            NHN code: {e.nhnResultCode}
+          </span>
+        )}
+      </div>
+
+      <div className="flex gap-1.5">
+        <button className="rounded-lg border border-black/15 bg-transparent px-3 py-1 text-[12px] text-[#5F5E5A] hover:bg-[#F7F7F5]">
+          원인 확인
+        </button>
+        <button className="rounded-lg border border-black/15 bg-transparent px-3 py-1 text-[12px] text-[#5F5E5A] hover:bg-[#F7F7F5]">
+          무시
+        </button>
+      </div>
+    </div>
   );
 }

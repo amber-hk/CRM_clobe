@@ -126,7 +126,9 @@ function TabButton({
 }
 
 function DoneTable({ rows, skuOf }: { rows: Campaign[]; skuOf: (c: Campaign) => Sku | null }) {
-  const cols = "100px 1fr 140px 70px 70px 80px 70px 70px 70px";
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const detail = rows.find((c) => c.id === detailId) ?? null;
+  const cols = "80px 1fr 60px 70px 70px 70px 65px 65px 65px";
   return (
     <div className="rounded-xl border border-black/10 bg-white p-5">
       <div
@@ -135,13 +137,13 @@ function DoneTable({ rows, skuOf }: { rows: Campaign[]; skuOf: (c: Campaign) => 
       >
         <div>발송일</div>
         <div>캠페인</div>
-        <div>템플릿</div>
         <div className="text-center">채널</div>
-        <div className="text-center">유형</div>
-        <div className="text-right">발송사</div>
+        <div className="text-right">발송</div>
+        <div className="text-right">수신</div>
+        <div className="text-right">수신실패율</div>
         <div className="text-right">오픈율</div>
         <div className="text-right">유입률</div>
-        <div className="text-center">상태</div>
+        <div className="text-center">상세</div>
       </div>
       {rows.length === 0 ? (
         <div className="py-6 text-center text-[13px] text-[#9A9994]">
@@ -149,43 +151,144 @@ function DoneTable({ rows, skuOf }: { rows: Campaign[]; skuOf: (c: Campaign) => 
         </div>
       ) : (
         rows.map((c) => {
-          const sku = skuOf(c);
+          const failRate =
+            c.delivered_count > 0
+              ? (c.delivered_count - (c.received_count ?? c.delivered_count)) / c.delivered_count
+              : 0;
+          const failCls = failRate > 0.05 ? "text-[#E24B4A] font-medium" : "";
           const convCls =
             c.conversion_rate == null ? "" : c.conversion_rate < 0.1 ? "text-[#E24B4A]" : "";
           return (
             <div
               key={c.id}
-              className="grid items-center border-b border-black/10 py-3 text-[13px] last:border-b-0"
+              className="grid cursor-pointer items-center border-b border-black/10 py-3 text-[13px] last:border-b-0 hover:bg-[#F7F7F5]"
               style={{ gridTemplateColumns: cols }}
+              onClick={() => setDetailId(c.id)}
             >
               <div className="text-[12px] text-[#5F5E5A]">
                 {c.sent_at?.slice(5, 10).replace("-", ".") ?? "—"}
               </div>
-              <div className="font-medium">{c.name}</div>
-              <div className="flex items-center gap-1.5 text-[12px]">
-                {sku && <SkuTag sku={sku} />}
-                {c.template_id ? (
-                  <span className="truncate font-mono text-[11px] text-[#9A9994]">
-                    <TemplateName id={c.template_id} />
-                  </span>
-                ) : (
-                  <span className="text-[11px] italic text-[#9A9994]">자유 발송</span>
-                )}
+              <div>
+                <div className="font-medium">{c.name}</div>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <SendTypeBadge type={c.send_type} />
+                  <ChannelBadge ch={c.channel} />
+                </div>
               </div>
               <div className="flex justify-center"><ChannelBadge ch={c.channel} /></div>
-              <div className="flex justify-center"><SendTypeBadge type={c.send_type} /></div>
-              <div className="text-right">{c.recipient_count.toLocaleString()}</div>
+              <div className="text-right">{(c.recipient_count ?? 0).toLocaleString()}</div>
+              <div className="text-right">{(c.received_count ?? 0).toLocaleString()}</div>
+              <div className={`text-right ${failCls}`}>
+                {failRate > 0 ? `${(failRate * 100).toFixed(1)}%` : "0%"}
+                {c.bounce && failRate > 0 && (
+                  <div className="flex justify-end gap-0.5 mt-0.5">
+                    {c.bounce.hard > 0 && <span title="Hard Bounce" className="text-[9px] text-[#E24B4A]">H{c.bounce.hard}</span>}
+                    {c.bounce.soft > 0 && <span title="Soft Bounce" className="text-[9px] text-[#BA7517]">S{c.bounce.soft}</span>}
+                    {c.bounce.spam > 0 && <span title="스팸 차단" className="text-[9px] text-[#534AB7]">✉{c.bounce.spam}</span>}
+                  </div>
+                )}
+              </div>
               <div className="text-right">
                 {c.open_rate == null ? "—" : `${(c.open_rate * 100).toFixed(1)}%`}
               </div>
               <div className={`text-right ${convCls}`}>
                 {c.conversion_rate == null ? "—" : `${(c.conversion_rate * 100).toFixed(1)}%`}
               </div>
-              <div className="flex justify-center text-[11px] text-[#5F5E5A]">{c.status}</div>
+              <div className="flex justify-center">
+                <button className="text-[11px] text-[#08B1A9] hover:underline">상세</button>
+              </div>
             </div>
           );
         })
       )}
+
+      {detail && <CampaignDetailModal campaign={detail} onClose={() => setDetailId(null)} />}
+    </div>
+  );
+}
+
+function CampaignDetailModal({ campaign: c, onClose }: { campaign: Campaign; onClose: () => void }) {
+  const failCount = (c.delivered_count ?? 0) - (c.received_count ?? 0);
+  const failRate = c.delivered_count > 0 ? failCount / c.delivered_count : 0;
+  const steps = [
+    { label: "발송 요청", count: c.recipient_count ?? 0, color: "#5F5E5A" },
+    { label: "발송 성공", count: c.delivered_count ?? 0, color: "#185FA5" },
+    { label: "수신 성공", count: c.received_count ?? 0, color: "#0F6E56" },
+  ];
+  if (c.channel === "email" && c.open_rate != null) {
+    steps.push({
+      label: "열람",
+      count: Math.round((c.received_count ?? 0) * c.open_rate),
+      color: "#08B1A9",
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="w-[90%] max-w-[520px] rounded-xl border border-black/10 bg-white p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="text-[16px] font-semibold">{c.name}</div>
+          <button onClick={onClose} className="text-[#9A9994] hover:text-[#1A1A18]">✕</button>
+        </div>
+
+        <div className="mb-4 text-[11px] font-medium uppercase tracking-wider text-[#9A9994]">
+          발송 → 수신 → 열람 퍼널
+        </div>
+        <div className="mb-4 flex items-end gap-1">
+          {steps.map((s, i) => {
+            const maxCount = steps[0].count || 1;
+            const pct = Math.max(10, (s.count / maxCount) * 100);
+            return (
+              <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                <div className="text-[12px] font-semibold" style={{ color: s.color }}>
+                  {s.count.toLocaleString()}
+                </div>
+                <div className="w-full rounded" style={{ height: pct * 1.5, background: s.color, opacity: 0.2 }} />
+                <div className="w-full rounded" style={{ height: pct * 1.5, background: s.color, marginTop: -pct * 1.5 }} />
+                <div className="text-[10px] text-[#9A9994]">{s.label}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        {c.channel === "email" && c.bounce && (
+          <div className="mb-4">
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[#9A9994]">
+              수신 실패 상세 ({failCount}건 · {(failRate * 100).toFixed(1)}%)
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-lg border border-black/10 px-3 py-2 text-center">
+                <div className="text-[14px] font-semibold text-[#E24B4A]">{c.bounce.hard}</div>
+                <div className="text-[10px] text-[#9A9994]">Hard Bounce</div>
+                <div className="text-[9px] text-[#9A9994]">주소 없음</div>
+              </div>
+              <div className="rounded-lg border border-black/10 px-3 py-2 text-center">
+                <div className="text-[14px] font-semibold text-[#BA7517]">{c.bounce.soft}</div>
+                <div className="text-[10px] text-[#9A9994]">Soft Bounce</div>
+                <div className="text-[9px] text-[#9A9994]">메일함 초과 등</div>
+              </div>
+              <div className="rounded-lg border border-black/10 px-3 py-2 text-center">
+                <div className="text-[14px] font-semibold text-[#534AB7]">{c.bounce.spam}</div>
+                <div className="text-[10px] text-[#9A9994]">스팸 차단</div>
+                <div className="text-[9px] text-[#9A9994]">네이트/카카오 등</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {c.channel === "alimtalk" && failCount > 0 && (
+          <div className="mb-4 rounded-lg bg-[#F7F7F5] px-3 py-2.5 text-[12px] text-[#5F5E5A]">
+            알림톡 수신 실패 <strong className="text-[#E24B4A]">{failCount}건</strong> ({(failRate * 100).toFixed(1)}%)
+            <div className="mt-0.5 text-[11px] text-[#9A9994]">카카오 미가입, 채널 차��� 등</div>
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <button onClick={onClose} className="rounded-lg border border-black/15 bg-transparent px-4 py-2 text-[13px] text-[#5F5E5A] hover:bg-[#F7F7F5]">
+            닫기
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
