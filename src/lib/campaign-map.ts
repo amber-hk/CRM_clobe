@@ -33,6 +33,20 @@ export type CampaignMapEntry = {
   send_type: SendType | null;
   /** Deactivated templates are hidden from send + automation surfaces. */
   is_active?: boolean;
+  /** 'once' = 계정당 1회, 'recurring' = 반복 */
+  frequency?: "once" | "recurring";
+  /** 발송 시간 e.g. "8:00", "10:00", "변동" */
+  scheduled_time?: string;
+  /** 발송 요일 패턴 */
+  scheduled_days?: "daily" | "weekday" | "weekday_no_fri" | "monday" | "variable";
+  /** 발송 조건 설명 */
+  send_condition?: string;
+  /** 발송 대상 설명 */
+  send_target?: string;
+  /** 현재 CTR (null = N/A) */
+  ctr?: number | null;
+  /** 목표 CTR (default 0.1) */
+  ctr_target?: number;
   updated_at: string;
 };
 

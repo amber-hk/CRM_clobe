@@ -7,10 +7,10 @@ import {
   FileText,
   History,
   LayoutDashboard,
+  Map,
   Send,
   Settings,
   Users,
-  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { mockAlimErrors, mockCtrWarnings, mockTrackingWarnings, mockDormantTemplates } from "@/lib/mock-data";
@@ -41,7 +41,7 @@ const SECTIONS: { title: string; items: Item[] }[] = [
   {
     title: "관리",
     items: [
-      { href: "/automation", label: "자동화 현황", icon: Zap },
+      { href: "/map", label: "지도", icon: Map },
       { href: "/templates", label: "템플릿 관리", icon: FileText },
     ],
   },

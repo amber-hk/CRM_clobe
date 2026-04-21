@@ -19,15 +19,26 @@ const EPOCH = "1970-01-01T00:00:00Z";
 
 type Partial = Omit<CampaignMapEntry, "template_id" | "updated_at">;
 
+type ScheduleOpts = {
+  frequency?: "once" | "recurring";
+  scheduled_time?: string;
+  scheduled_days?: "daily" | "weekday" | "weekday_no_fri" | "monday" | "variable";
+  send_condition?: string;
+  send_target?: string;
+  ctr?: number | null;
+  ctr_target?: number;
+};
+
 function mk(
   display_name: string,
   description: string | null,
   sku: CampaignSku | null,
   send_type: SendType,
   funnel_stage: FunnelStage,
-  channel: CampaignChannel = "EMAIL"
+  channel: CampaignChannel = "EMAIL",
+  sched?: ScheduleOpts
 ): Partial {
-  return { channel, display_name, description, sku, funnel_stage, send_type };
+  return { channel, display_name, description, sku, funnel_stage, send_type, ...sched };
 }
 
 /** Inactive stub — leaves classification fields blank, flagged is_active=false. */
@@ -55,30 +66,30 @@ const RAW: Array<[string, Partial]> = [
   ["user_1_year_expired",                               mk("1년 미활성 유저 삭제 안내",          "가입 후 1년간 워크스페이스 미생성 유저에게 계정 삭제 예정 안내",                         "clobe-ai",      "triggered",    "offboarding")],
   ["clobe_connect_client_vat_review_request",           mk("예상 부가세 검토 요청 (세무대리인 연동)", "세무대리인 연동된 고객이 예상 부가세 검토 요청을 세무대리인에게 발송",                "clobe-connect", "user_ping",    "activation")],
   ["clobe_connect_client_vat_request",                  mk("예상 부가세 검토 요청 (미연동)",      "세무대리인 미연동 고객이 예상 부가세 검토 요청을 세무대리인에게 발송",                   "clobe-connect", "user_ping",    "activation")],
-  ["report_monday1_prod",                               mk("자금일보 월요일 주간 요약",           "월요일 전용, 지난주 현금흐름 요약 자금일보",                                              "clobe-ai",      "user_setting", "activation")],
-  ["report_keep_error1_prod",                           mk("자금일보 3일 연속 수집 실패 안내 A",  "3일 연속 자금일보 수집 실패 시 3일차에 발송",                                             "clobe-ai",      "triggered",    "retention")],
+  ["report_monday1_prod",                               mk("자금일보 월요일 주간 요약",           "월요일 전용, 지난주 현금흐름 요약 자금일보",                                              "clobe-ai",      "user_setting", "activation", "EMAIL", { frequency: "recurring", scheduled_time: "8:00", scheduled_days: "monday", send_condition: "매주 월요일", send_target: "자금일보 수신 설정 회사", ctr: null })],
+  ["report_keep_error1_prod",                           mk("자금일보 3일 연속 수집 실패 안내 A",  "3일 연속 자금일보 수집 실패 시 3일차에 발송",                                             "clobe-ai",      "triggered",    "retention", "EMAIL", { frequency: "recurring", scheduled_time: "8:00", scheduled_days: "daily", send_condition: "3일 연속 수집 실패", send_target: "자금일보 수신 회사", ctr: null })],
   ["clobe_connect_client_data_request_prod",            mk("데이터 제공 요청 (수임처→세무대리인)", "클로브AI 고객이 세무대리인에게 데이터 제공을 요청할 때 발송",                            "clobe-connect", "user_ping",    "activation")],
   ["clobe_connect_client_tax_info_request_prod",        mk("클로브커넥트 연동 초대 (수임처→세무대리인)", "클로브AI 고객이 세무대리 메뉴를 통해 세무대리인에게 커넥트 연동 요청",                 "clobe-connect", "user_ping",    "onboarding")],
-  ["report-offed-notice1_prod",                         mk("자금일보 중단 완료 안내 (11일차)",    "10일 이상 미접속으로 자금일보가 중단되었음을 안내",                                       "clobe-ai",      "triggered",    "offboarding")],
+  ["report-offed-notice1_prod",                         mk("자금일보 중단 완료 안내 (11일차)",    "10일 이상 미접속으로 자금일보가 중단되었음을 안내",                                       "clobe-ai",      "triggered",    "offboarding", "EMAIL", { frequency: "once", scheduled_time: "8:00", scheduled_days: "weekday", send_condition: "미접속 11일차", send_target: "자금일보 수신 회사" })],
   ["clobe_connect_in_house_manager_approval_notice",    mk("세무대리 담당자 승인 완료 안내",      "세무대리 관리자 승인 완료 여부를 해당 구성원에게 안내",                                   "clobe-connect", "user_ping",    "onboarding")],
   ["clobe_in_house_manager_approval_request",           mk("세무대리 관리자 권한 요청",          "수임처가 세무대리인에게 사내 세무대리 담당자 승인 요청",                                  "clobe-connect", "user_ping",    "onboarding")],
-  ["first_scraping_complete_d1_test2_prod",             mk("최초 수집 완료 D+1 미접속 넛징 B",    "최초 수집 이후 다음 영업일 아침까지 접속 로그 없으면 발송 (B안)",                         "clobe-ai",      "triggered",    "onboarding")],
-  ["first_scraping_complete_d1_test1_prod",             mk("최초 수집 완료 D+1 미접속 넛징 A",    "최초 수집 이후 다음 영업일 아침까지 접속 로그 없으면 발송 (A안)",                         "clobe-ai",      "triggered",    "onboarding")],
+  ["first_scraping_complete_d1_test2_prod",             mk("최초 수집 완료 D+1 미접속 넛징 B",    "최초 수집 이후 다음 영업일 아침까지 접속 로그 없으면 발송 (B안)",                         "clobe-ai",      "triggered",    "onboarding",  "EMAIL", { frequency: "once", scheduled_time: "10:00", scheduled_days: "weekday_no_fri", send_condition: "최초 수집 D+1 미접속", send_target: "수집 완료 회사" })],
+  ["first_scraping_complete_d1_test1_prod",             mk("최초 수집 완료 D+1 미접속 넛징 A",    "최초 수집 이후 다음 영업일 아침까지 접속 로그 없으면 발송 (A안)",                         "clobe-ai",      "triggered",    "onboarding",  "EMAIL", { frequency: "once", scheduled_time: "10:00", scheduled_days: "weekday_no_fri", send_condition: "최초 수집 D+1 미접속", send_target: "수집 완료 회사" })],
   ["clobe_connect_tax_client_invitation_prod",          mk("클로브AI 가입 초대 (세무대리인→수임처)", "세무대리인이 수임처를 클로브AI에 초대",                                                 "clobe-connect", "user_ping",    "onboarding")],
   ["clobe_connect_payroll_notice_prod",                 mk("급여대장 전달 (세무대리인→수임처)",   "세무대리인이 클로브커넥트에서 수임처 담당자에게 급여대장 전송",                           "clobe-connect", "user_ping",    "activation")],
   ["ta-off-notice-2nd_prod",                            mk("세무대리인 수집 중단 안내 2차 (30일)", "세무대리인 30일 미접속, 수임처 데이터 자동 수집 중단 최종 안내",                         "clobe-connect", "triggered",    "offboarding")],
   ["ta-off-notice-1st_prod",                            mk("세무대리인 수집 중단 안내 1차 (15일)", "세무대리인 15일 미접속, 수임처 데이터 자동 수집 중단 예정 안내",                         "clobe-connect", "triggered",    "offboarding")],
   ["clobe_connect_invitation_prod",                     mk("클로브커넥트 초대 (수임처→세무대리인)", "수임처가 세무대리인에게 클로브커넥트 초대 메일 발송",                                   "clobe-connect", "user_ping",    "onboarding")],
-  ["scrap-off-notice-4th_prod",                         mk("미접속 수집 중단 안내 4차 (31일)",    "30일 이상 미접속, 데이터 수집 및 분석 중단 안내",                                         "clobe-ai",      "triggered",    "offboarding")],
-  ["scrap-off-notice-3rd_prod",                         mk("미접속 수집 중단 안내 3차 (30일)",    "오늘 자정 이후 금융 데이터 수집 종료 예정 최종 안내",                                     "clobe-ai",      "triggered",    "offboarding")],
-  ["scrap-off-notice-2nd_prod",                         mk("미접속 수집 중단 안내 2차 (15일)",    "D-몇일 뒤 현금흐름 분석 중단 예정 안내",                                                  "clobe-ai",      "triggered",    "offboarding")],
-  ["scrap-off-notice-1st_prod",                         mk("미접속 수집 중단 안내 1차 (7일)",     "7일 이상 미접속, 30일 미접속 시 수집 중단 예정 안내",                                     "clobe-ai",      "triggered",    "retention")],
+  ["scrap-off-notice-4th_prod",                         mk("미접속 수집 중단 안내 4차 (31일)",    "30일 이상 미접속, 데이터 수집 및 분석 중단 안내",                                         "clobe-ai",      "triggered",    "offboarding", "EMAIL", { frequency: "once", scheduled_time: "10:00", scheduled_days: "weekday_no_fri", send_condition: "미접속 31일", send_target: "데이터 수집 중 회사", ctr: 0.029 })],
+  ["scrap-off-notice-3rd_prod",                         mk("미접속 수집 중단 안내 3차 (30일)",    "오늘 자정 이후 금융 데이터 수집 종료 예정 최종 안내",                                     "clobe-ai",      "triggered",    "offboarding", "EMAIL", { frequency: "once", scheduled_time: "10:00", scheduled_days: "weekday_no_fri", send_condition: "미접속 30일", send_target: "데이터 수집 중 회사", ctr: 0.029 })],
+  ["scrap-off-notice-2nd_prod",                         mk("미접속 수집 중단 안내 2차 (15일)",    "D-몇일 뒤 현금흐름 분석 중단 예정 안내",                                                  "clobe-ai",      "triggered",    "offboarding", "EMAIL", { frequency: "once", scheduled_time: "10:00", scheduled_days: "weekday_no_fri", send_condition: "미접속 15일", send_target: "데이터 수집 중 회사", ctr: 0.029 })],
+  ["scrap-off-notice-1st_prod",                         mk("미접속 수집 중단 안내 1차 (7일)",     "7일 이상 미접속, 30일 미접속 시 수집 중단 예정 안내",                                     "clobe-ai",      "triggered",    "retention",   "EMAIL", { frequency: "once", scheduled_time: "10:00", scheduled_days: "weekday_no_fri", send_condition: "미접속 7일", send_target: "데이터 수집 중 회사", ctr: 0.0857 })],
   ["clobe_connect_data_request",                        mk("데이터 연동 요청 (구버전)",          "수임처가 세무대리인에게 데이터 연동 요청 (구버전)",                                       "clobe-connect", "user_ping",    "activation")],
-  ["report-off-notice",                                 mk("자금일보 중단 안내 (10일차)",        "10일 이상 미접속으로 자금일보 발송 중단 예정 안내",                                       "clobe-ai",      "triggered",    "retention")],
-  ["first_scraping_complete_prod",                      mk("최초 수집 완료 안내",                "최초 연동 후 스크래핑 및 분석 완료 시점에 발송",                                          "clobe-ai",      "user_ping",    "onboarding")],
+  ["report-off-notice",                                 mk("자금일보 중단 안내 (10일차)",        "10일 이상 미접속으로 자금일보 발송 중단 예정 안내",                                       "clobe-ai",      "triggered",    "retention",   "EMAIL", { frequency: "once", scheduled_time: "15:00", scheduled_days: "weekday_no_fri", send_condition: "미접속 10일", send_target: "자금일보 수신 회사", ctr: 0.32 })],
+  ["first_scraping_complete_prod",                      mk("최초 수집 완료 안내",                "최초 연동 후 스크래핑 및 분석 완료 시점에 발송",                                          "clobe-ai",      "user_ping",    "onboarding",  "EMAIL", { frequency: "once", scheduled_time: "변동", scheduled_days: "variable", send_condition: "최초 수집 완료", send_target: "데이터 연동 직후 회사", ctr: 0.7238 })],
   ["clobe_partners_invitation_prod",                    mk("클로브파트너스 초대",                "수임처가 세무대리인에게 클로브파트너스 초대",                                             "clobe-connect", "user_ping",    "onboarding")],
   ["partner_client_clobe_invitation_wtoptax_prod",      mk("클로브AI 가입 초대 (세일택스 전용)",  "세무법인세일택스 수임처 전용 클로브AI 초대 메일",                                         "clobe-connect", "user_ping",    "onboarding")],
-  ["recommendation_event_promotion_prod",               mk("지인 추천 이벤트 프로모션",          "지인 추천 이벤트 홍보 이메일 (20만원 적립)",                                              "clobe-ai",      "triggered",    "activation")],
+  ["recommendation_event_promotion_prod",               mk("지인 추천 이벤트 프로모션",          "지인 추천 이벤트 홍보 이메일 (20만원 적립)",                                              "clobe-ai",      "triggered",    "activation",  "EMAIL", { frequency: "once", scheduled_time: "9:00", scheduled_days: "weekday", send_condition: "가입 후 조건 충족", send_target: "활성 회사" })],
   ["partner_client_clobe_invitation_prod",              mk("클로브AI 가입 초대 (파트너 수임처)",  "세무대리인이 수임처를 클로브AI에 초대",                                                   "clobe-connect", "user_ping",    "onboarding")],
   ["partner_invitation_prod",                           mk("파트너사 어드민 가입 알림",          "파트너사 고객 가입 시 파트너사 어드민에게 알림",                                          "clobe-ai",      "user_ping",    "onboarding")],
   ["tax_agent_agreement_prod",                          mk("수임 동의 요청",                     "세무대리인이 고객에게 수임 동의 요청 발송",                                               "clobe-connect", "user_ping",    "onboarding")],
@@ -89,10 +100,10 @@ const RAW: Array<[string, Partial]> = [
   ["crm_data_connection_02_prod",                       mk("데이터 연동 넛징 2차",               "데이터 연동 유도 넛징 2회차 (자금일보 예시)",                                             "clobe-ai",      "triggered",    "onboarding")],
   ["crm_data_connection_03_prod",                       mk("데이터 연동 넛징 3차 (PM 편지)",      "데이터 연동 넛징 3회차, PM 직접 작성 형식",                                                "clobe-ai",      "triggered",    "onboarding")],
   ["magic_link_prod",                                   mk("PC 로그인 링크",                     "모바일로 회사 생성 후 PC에서 비밀번호 없이 로그인 가능한 링크 전송",                      "clobe-ai",      "user_ping",    "onboarding")],
-  ["daily_report_prod",                                 mk("자금일보",                           "매일 아침 발송되는 자금일보",                                                             "clobe-ai",      "user_setting", "activation")],
-  ["daily_report_notrx_1_prod",                         mk("자금일보 (거래 없음)",                "어제 거래내역이 없을 때 발송하는 자금일보",                                               "clobe-ai",      "user_setting", "activation")],
-  ["daily_report_error_1_prod",                         mk("자금일보 수집 오류",                  "자금일보 잔액 0원 또는 수집 오류 시 발송",                                                "clobe-ai",      "triggered",    "retention")],
-  ["daily_report_scrape_fail_1_prod",                   mk("자금일보 수집 실패",                  "수집 실패 혹은 일부 실패 상태일 때 발송",                                                 "clobe-ai",      "triggered",    "retention")],
+  ["daily_report_prod",                                 mk("자금일보",                           "매일 아침 발송되는 자금일보",                                                             "clobe-ai",      "user_setting", "activation",  "EMAIL", { frequency: "recurring", scheduled_time: "8:00", scheduled_days: "daily", send_condition: "매일 아침", send_target: "자금일보 수신 설정 회사", ctr: 0.017 })],
+  ["daily_report_notrx_1_prod",                         mk("자금일보 (거래 없음)",                "어제 거래내역이 없을 때 발송하는 자금일보",                                               "clobe-ai",      "user_setting", "activation",  "EMAIL", { frequency: "recurring", scheduled_time: "8:00", scheduled_days: "daily", send_condition: "매일 아침, 거래 없음", send_target: "자금일보 수신 설정 회사", ctr: null })],
+  ["daily_report_error_1_prod",                         mk("자금일보 수집 오류",                  "자금일보 잔액 0원 또는 수집 오류 시 발송",                                                "clobe-ai",      "triggered",    "retention",   "EMAIL", { frequency: "recurring", scheduled_time: "8:00", scheduled_days: "daily", send_condition: "수집 오류 발생", send_target: "자금일보 수신 회사", ctr: null })],
+  ["daily_report_scrape_fail_1_prod",                   mk("자금일보 수집 실패",                  "수집 실패 혹은 일부 실패 상태일 때 발송",                                                 "clobe-ai",      "triggered",    "retention",   "EMAIL", { frequency: "recurring", scheduled_time: "8:00", scheduled_days: "daily", send_condition: "수집 실패", send_target: "자금일보 수신 회사", ctr: null })],
   ["daily_report_promotion_prod",                       mk("자금일보 프로모션",                   "자금일보 프로모션 - 내일도 받고 싶으면 클릭",                                             "clobe-ai",      "triggered",    "activation")],
   ["invitation_prod",                                   mk("워크스페이스 구성원 초대",            "관리자가 구성원을 초대하면 초대받은 사람에게 발송",                                       "clobe-ai",      "user_ping",    "onboarding")],
   ["email_verification_prod",                           mk("이메일 인증번호",                     "회원가입, 비밀번호 재설정 등 이메일 인증번호 검증 과정에 발송",                           "clobe-ai",      "user_ping",    "onboarding")],
@@ -107,8 +118,8 @@ const RAW: Array<[string, Partial]> = [
   ["REPURCHASE_PROD",                                   mk("환매 예정 안내",                     "환매가 진행될 예정일 때 발송",                                                            "clobe-finance", "triggered",    "finance")],
   ["REPAYMENT_D-DAY_PROD",                              mk("회수일 당일 안내",                   "오늘이 회수일임을 안내",                                                                  "clobe-finance", "triggered",    "finance")],
   ["REPAYMENT_D-3_PROD",                                mk("회수일 D-3 안내",                    "회수일 3일 전 안내",                                                                      "clobe-finance", "triggered",    "finance")],
-  ["CERTIFICATE_EXPIRED_D-N_PROD",                      mk("인증서 만료 D-N 안내",               "인증서 만료 N일 전 안내",                                                                 "clobe-finance", "triggered",    "finance")],
-  ["CERTIFICATE_EXPIRED_PROD",                          mk("인증서 사용불가 안내",               "인증서가 사용불가 상태일 때 발송",                                                        "clobe-finance", "triggered",    "finance")],
+  ["CERTIFICATE_EXPIRED_D-N_PROD",                      mk("인증서 만료 D-N 안내",               "인증서 만료 N일 전 안내",                                                                 "clobe-finance", "triggered",    "finance",     "EMAIL", { frequency: "once", scheduled_time: "9:00", scheduled_days: "daily", send_condition: "인증서 만료 예정", send_target: "클로브금융 이용 회사" })],
+  ["CERTIFICATE_EXPIRED_PROD",                          mk("인증서 사용불가 안내",               "인증서가 사용불가 상태일 때 발송",                                                        "clobe-finance", "triggered",    "finance",     "EMAIL", { frequency: "once", scheduled_time: "9:00", scheduled_days: "daily", send_condition: "인증서 만료됨", send_target: "클로브금융 이용 회사" })],
   ["TERM_OFFER_APPROVE_PROD",                           mk("판매조건 수락 안내",                 "판매조건 요청이 수락되었을 때 발송",                                                      "clobe-finance", "user_ping",    "finance")],
   ["TERM_OFFER_REJECT_NO_REVENUE_PROD",                 mk("판매조건 거절 (매출 없음)",           null,                                                                                      "clobe-finance", "user_ping",    "finance")],
   ["TERM_OFFER_REJECT_UC_FAIL_PROD",                    mk("판매조건 거절 (UC 실패)",             null,                                                                                      "clobe-finance", "user_ping",    "finance")],
